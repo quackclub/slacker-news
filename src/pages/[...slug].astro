@@ -35,4 +35,17 @@ const { Content } = await post.entry.render();
       <a href="/">&larr; Back to front page</a>
     </footer>
   </article>
+
+  <div class="monthly-limit-overlay" role="dialog" aria-modal="true" aria-labelledby="monthly-limit-title" aria-describedby="monthly-limit-description">
+    <div class="monthly-limit-panel">
+      <p class="monthly-limit-kicker">Monthly Reader Limit</p>
+      <h2 class="monthly-limit-title" id="monthly-limit-title">You&rsquo;ve reached your monthly free article limit.</h2>
+      <p class="monthly-limit-description" id="monthly-limit-description">
+        Please sign in and subscribe ($3/month) to continue reading.
+      </p>
+      <div class="monthly-limit-actions">
+        <a class="monthly-limit-button" href="/submissions/">Sign In &amp; Subscribe</a>
+      </div>
+    </div>
+  </div>
 </BaseLayout>
