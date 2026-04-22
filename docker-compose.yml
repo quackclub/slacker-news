@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: slacker
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: slacker_news
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - slacker-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U slacker -d slacker_news"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  payload:
+    build:
+      context: .
+      dockerfile: apps/cms/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URI: postgres://slacker:${POSTGRES_PASSWORD}@postgres:5432/slacker_news
+      PAYLOAD_SECRET: ${PAYLOAD_SECRET}
+      PAYLOAD_URL: http://payload:3000
+      ASTRO_URL: http://astro:4321
+    ports:
+      - "3000:3000"
+    networks:
+      - slacker-net
+
+  astro:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - payload
+    environment:
+      PAYLOAD_INTERNAL_URL: http://payload:3000
+      PUBLIC_PAYLOAD_URL: ${PAYLOAD_PUBLIC_URL}
+      PAYLOAD_API_KEY: ${PAYLOAD_API_KEY}
+      HOST: 0.0.0.0
+      PORT: 4321
+    ports:
+      - "8080:4321"
+    networks:
+      - slacker-net
+
+networks:
+  slacker-net:
+
+volumes:
+  postgres_data:

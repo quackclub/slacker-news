@@ -1,5 +1,7 @@
 .DS_Store
 node_modules
+.turbo
+.next
 dist
 .astro
 _site
@@ -16,3 +18,7 @@ review-import.json
 .env.development
 .env.test
 .env.production
+apps/*/node_modules
+apps/*/.astro
+apps/*/.next
+apps/*/dist
