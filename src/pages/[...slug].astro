@@ -114,6 +114,7 @@ const followUpLinks = post.followUpTo?.map((slug) => {
 
     <footer class="story-footer">
       <a href="/">&larr; Back to front page</a>
+      <a href={`/${slug}/stats/`} class="stats-link">View stats</a>
     </footer>
   </article>
 </BaseLayout>
@@ -160,6 +161,24 @@ const followUpLinks = post.followUpTo?.map((slug) => {
     color: inherit;
     text-decoration: underline;
     font-weight: 500;
+  }
+
+  .story-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #ddd;
+  }
+
+  .stats-link {
+    color: #666;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  .stats-link:hover {
+    color: #000;
   }
 
   html.dark .story-response-banner,

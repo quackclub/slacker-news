@@ -11,9 +11,11 @@
     "check": "astro check"
   },
   "dependencies": {
+    "@astrojs/db": "^0.14.14",
     "@astrojs/mdx": "^5.0.4",
     "@astrojs/rss": "^4.0.18",
-    "astro": "^6.1.9"
+    "astro": "^6.1.9",
+    "chart.js": "^4.5.1"
   },
   "devDependencies": {
     "@types/node": "^22.19.17",
