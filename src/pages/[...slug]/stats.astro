@@ -6,24 +6,18 @@ import { db, PageStats, PageStatsHistory, eq } from "astro:db";
 
 export const prerender = false;
 
-export async function getStaticPaths() {
-  const posts = await getPosts();
-  return posts.map((post) => ({
-    params: { slug: post.slug },
-    props: { slug: post.slug, post }
-  }));
-}
-
 const site = await getSiteConfig();
-const slug = Astro.props?.slug ?? Astro.params.slug;
-const post = Astro.props?.post;
+const slugParam = Astro.params.slug;
+const allPosts = await getPosts();
+const post = allPosts.find((entry) => entry.slug === slugParam);
+const slug = post?.slug ?? slugParam;
 const now = Date.now();
 const ONE_HOUR = 60 * 60 * 1000;
 
 const key = generateAbacusKey(`/${slug}/`);
 const url = getAbacusGetUrl(key);
 
-async function fetchLiveValue(): Promise<number | null> {
+async function fetchLiveValue() {
   try {
     const response = await fetch(url);
     if (!response.ok) return null;
@@ -36,7 +30,8 @@ async function fetchLiveValue(): Promise<number | null> {
 }
 
 const cached = await db.select().from(PageStats).where(eq(PageStats.key, key));
-const needsRefresh = cached.length === 0 || (cached[0].updatedAt as number) + ONE_HOUR < now;
+const staleThreshold = now - ONE_HOUR;
+const needsRefresh = cached.length === 0 || Number(cached[0]?.updatedAt) < staleThreshold;
 
 let currentValue = cached.length > 0 ? cached[0].value as number : null;
 
@@ -85,60 +80,67 @@ const chartValues = history.map(h => h.value as number);
       <div class="chart-block">
         <h2>Views Over Time</h2>
         <div class="chart-wrap">
-          <canvas id="views-chart"></canvas>
+          <canvas id="views-chart"
+            data-labels={JSON.stringify(chartLabels)}
+            data-values={JSON.stringify(chartValues)}>
+          </canvas>
         </div>
       </div>
     )}
 
-  <script define:vars={{ chartLabels, chartValues }}>
+  <script>
     import Chart from "chart.js/auto";
 
     const ctx = document.getElementById("views-chart");
-    if (ctx && chartLabels.length > 0) {
-      new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            data: values,
-            borderColor: "#000",
-            backgroundColor: "transparent",
-            borderWidth: 1.5,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointHoverBackgroundColor: "#000",
-            tension: 0.3,
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "#fff",
-              titleColor: "#000",
-              bodyColor: "#000",
+    if (ctx) {
+      const labels = JSON.parse(ctx.dataset.labels || "[]");
+      const values = JSON.parse(ctx.dataset.values || "[]");
+      if (labels.length > 0) {
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [{
+              data: values,
               borderColor: "#000",
-              borderWidth: 1,
-              displayColors: false,
-              callbacks: {
-                label: (ctx) => ctx.parsed.y.toLocaleString() + " views",
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHoverBackgroundColor: "#000",
+              tension: 0.3,
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#fff",
+                titleColor: "#000",
+                bodyColor: "#000",
+                borderColor: "#000",
+                borderWidth: 1,
+                displayColors: false,
+                callbacks: {
+                  label: (ctx) => ctx.parsed.y.toLocaleString() + " views",
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: "#ccc" },
+                ticks: { color: "#666", font: { size: 11 } }
+              },
+              y: {
+                grid: { color: "#ccc" },
+                ticks: { color: "#666", font: { size: 11 }, callback: (v) => v.toLocaleString() }
               }
             }
-          },
-          scales: {
-            x: {
-              grid: { color: "#ccc" },
-              ticks: { color: "#666", font: { size: 11 } }
-            },
-            y: {
-              grid: { color: "#ccc" },
-              ticks: { color: "#666", font: { size: 11 }, callback: (v) => v.toLocaleString() }
-            }
           }
-        }
-      });
+        });
+      }
     }
   </script>
   </section>

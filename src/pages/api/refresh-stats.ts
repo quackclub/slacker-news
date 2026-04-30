@@ -1,18 +1,18 @@
-import { generateAbacusKey, getAbacusGetUrl } from "../../lib/abacus";
+import { getAbacusGetUrl } from "../../lib/abacus";
 import { db, PageStats, PageStatsHistory } from "astro:db";
 
-export async function GET({ request }) {
+export const prerender = false;
+
+export async function GET() {
   const now = Date.now();
   const ONE_HOUR = 60 * 60 * 1000;
 
-  // Get all keys from DB
   const allStats = await db.select().from(PageStats);
-  
-  const results = [];
-  
+  const results: any[] = [];
+
   for (const row of allStats) {
-    const needsRefresh = (row.updatedAt) + ONE_HOUR < now;
-    
+    const needsRefresh = Number(row.updatedAt) + ONE_HOUR < now;
+
     if (needsRefresh) {
       try {
         const response = await fetch(getAbacusGetUrl(row.key));
@@ -24,12 +24,12 @@ export async function GET({ request }) {
               key: row.key,
               path: row.path,
               label: row.label,
-              kind: row.kind,
+              kind: row.kind as string,
               value,
               updatedAt: now,
             }).onConflictDoUpdate({
               target: PageStats.key,
-              set: { value, updatedAt: now }
+              set: { value: value, updatedAt: now }
             });
 
             await db.insert(PageStatsHistory).values({
@@ -38,12 +38,12 @@ export async function GET({ request }) {
               timestamp: now,
             });
 
-            results.push({ 
-              key: row.key, 
-              value, 
+            results.push({
+              key: row.key,
+              value,
               path: row.path,
               label: row.label,
-              kind: row.kind 
+              kind: row.kind,
             });
           }
         }
@@ -51,19 +51,19 @@ export async function GET({ request }) {
         console.warn(`Failed to refresh ${row.key}:`, e);
       }
     } else {
-      results.push({ 
-        key: row.key, 
-        value: row.value, 
+      results.push({
+        key: row.key,
+        value: row.value,
         path: row.path,
         label: row.label,
-        kind: row.kind 
+        kind: row.kind,
       });
     }
   }
 
   return new Response(JSON.stringify({
     refreshed: results.filter(r => r.value > 0).length,
-    total: results.reduce((sum, r) => sum + r.value, 0),
+    total: results.reduce((sum, r) => sum + Number(r.value), 0),
     timestamp: now
   }), {
     headers: {

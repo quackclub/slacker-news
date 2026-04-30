@@ -1,132 +1,11 @@
+---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { generateAbacusKey, getAbacusGetUrl } from "../lib/abacus";
-import { getPosts, getSiteConfig } from "../lib/content";
-import { db, PageStats, PageStatsHistory, eq } from "astro:db";
+import { getStatsData } from "../lib/stats-logic.js";
 
 export const prerender = false;
 
-const site = await getSiteConfig();
-const posts = await getPosts();
-const now = Date.now();
-const ONE_HOUR = 60 * 60 * 1000;
-
-type CounterRow = {
-  key: string;
-  path: string;
-  label: string;
-  kind: "page" | "article";
-  value: number | null;
-};
-
-const staticPaths = ["/", "/about/", "/submissions/", "/acknowledgements/", "/changelogs/", "/news/", "/opinion/", "/essays/", "/stats/"];
-
-const baseRows: CounterRow[] = [
-  ...staticPaths.map((path) => ({
-    key: generateAbacusKey(path),
-    path,
-    label: path === "/" ? "Homepage" : `${path.replace(/^\//, "").replace(/\/$/, "")}`,
-    kind: "page" as const,
-    value: null,
-  })),
-  ...posts.map((post) => ({
-    key: generateAbacusKey(post.url),
-    path: post.url,
-    label: post.title,
-    kind: "article" as const,
-    value: null,
-  })),
-];
-
-const rowsByKey = new Map<string, CounterRow>();
-for (const row of baseRows) {
-  if (!rowsByKey.has(row.key)) {
-    rowsByKey.set(row.key, row);
-  }
-}
-
-const allRows = Array.from(rowsByKey.values());
-
-async function fetchLiveValue(key: string): Promise<number | null> {
-  try {
-    const response = await fetch(getAbacusGetUrl(key));
-    if (!response.ok) return null;
-    const data = await response.json();
-    const value = Number(data?.value);
-    return Number.isFinite(value) ? value : null;
-  } catch {
-    return null;
-  }
-}
-
-async function refreshCache() {
-  for (const row of allRows) {
-    const liveValue = await fetchLiveValue(row.key);
-    if (liveValue === null) continue;
-
-    await db.insert(PageStats).values({
-      key: row.key,
-      path: row.path,
-      label: row.label,
-      kind: row.kind,
-      value: liveValue,
-      updatedAt: now,
-    }).onConflictDoUpdate({
-      target: PageStats.key,
-      set: { value: liveValue, updatedAt: now, path: row.path, label: row.label, kind: row.kind },
-    });
-
-    await db.insert(PageStatsHistory).values({
-      key: row.key,
-      value: liveValue,
-      timestamp: now,
-    });
-  }
-}
-
-const cached = await db.select().from(PageStats);
-const staleThreshold = now - ONE_HOUR;
-const needsRefresh = cached.length === 0 || cached.some(r => (r.updatedAt as number) < staleThreshold);
-
-if (needsRefresh) {
-  try {
-    await refreshCache();
-  } catch (e) {
-    console.warn("Failed to refresh cache:", e);
-  }
-}
-
-const freshCache = await db.select().from(PageStats);
-const history = await db.select().from(PageStatsHistory).orderBy(PageStatsHistory.timestamp);
-
-const cacheMap = new Map(freshCache.map(r => [r.key, r]));
-
-for (const row of allRows) {
-  const cached = cacheMap.get(row.key);
-  if (cached) {
-    row.value = cached.value as number;
-  }
-}
-
-const pages = allRows.filter(r => r.kind === "page").sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-const articles = allRows.filter(r => r.kind === "article").sort((a, b) => (b.value ?? 0) - (a.value ?? 0));
-const news = articles.filter(r => r.path.startsWith("/news/"));
-const essays = articles.filter(r => !r.path.startsWith("/news/"));
-
-const totalValue = freshCache.reduce((sum, r) => sum + (r.value as number), 0);
-
-const chartData = history.reduce((acc, entry) => {
-  const ts = entry.timestamp as number;
-  const date = new Date(ts).toISOString().split("T")[0];
-  if (!acc[date]) acc[date] = { date, total: 0 };
-  acc[date].total += entry.value as number;
-  return acc;
-}, {} as Record<string, { date: string; total: number }>);
-
-const chartLabels = Object.values(chartData).map(d => d.date);
-const chartValues = Object.values(chartData).map(d => d.total);
-
+const { site, pages, news, essays, totalValue, chartLabels, chartValues } = await getStatsData();
 ---
-
 <BaseLayout title="Pageview Stats" siteTitle={site.title} siteDescription={site.description}>
   <section class="stats-page">
     <h1>Pageview Stats</h1>
@@ -138,12 +17,12 @@ const chartValues = Object.values(chartData).map(d => d.total);
 
     <div class="chart-block">
       <h2>Views Over Time</h2>
-        <div class="chart-wrap">
-          <canvas id="views-chart"
-            data-labels={JSON.stringify(chartLabels)}
-            data-values={JSON.stringify(chartValues)}>
-          </canvas>
-        </div>
+      <div class="chart-wrap">
+        <canvas id="views-chart"
+          data-labels={JSON.stringify(chartLabels)}
+          data-values={JSON.stringify(chartValues)}>
+        </canvas>
+      </div>
     </div>
 
     <div class="stats-sections">
@@ -235,7 +114,7 @@ const chartValues = Object.values(chartData).map(d => d.total);
 
   <script>
     import Chart from "chart.js/auto";
-    
+
     const ctx = document.getElementById("views-chart");
     if (ctx) {
       const labels = JSON.parse(ctx.dataset.labels || "[]");
@@ -256,35 +135,36 @@ const chartValues = Object.values(chartData).map(d => d.total);
               tension: 0.3,
             }]
           },
-        options: {
-          responsive: true,
-          maintainAspectRatio: true,
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              backgroundColor: "#fff",
-              titleColor: "#000",
-              bodyColor: "#000",
-              borderColor: "#000",
-              borderWidth: 1,
-              displayColors: false,
-              callbacks: {
-                label: (ctx) => ctx.parsed.y.toLocaleString() + " views",
+          options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "#fff",
+                titleColor: "#000",
+                bodyColor: "#000",
+                borderColor: "#000",
+                borderWidth: 1,
+                displayColors: false,
+                callbacks: {
+                  label: (ctx) => ctx.parsed.y.toLocaleString() + " views",
+                }
+              }
+            },
+            scales: {
+              x: {
+                grid: { color: "#ccc" },
+                ticks: { color: "#666", font: { size: 11 } }
+              },
+              y: {
+                grid: { color: "#ccc" },
+                ticks: { color: "#666", font: { size: 11 }, callback: (v) => v.toLocaleString() }
               }
             }
-          },
-          scales: {
-            x: {
-              grid: { color: "#ccc" },
-              ticks: { color: "#666", font: { size: 11 } }
-            },
-            y: {
-              grid: { color: "#ccc" },
-              ticks: { color: "#666", font: { size: 11 }, callback: (v) => v.toLocaleString() }
-            }
           }
-        }
-      });
+        });
+      }
     }
   </script>
 </BaseLayout>
