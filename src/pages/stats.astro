@@ -1,8 +1,9 @@
----
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { generateAbacusKey, getAbacusGetUrl } from "../lib/abacus";
 import { getPosts, getSiteConfig } from "../lib/content";
 import { db, PageStats, PageStatsHistory, eq } from "astro:db";
+
+export const prerender = false;
 
 const site = await getSiteConfig();
 const posts = await getPosts();
@@ -83,7 +84,8 @@ async function refreshCache() {
 }
 
 const cached = await db.select().from(PageStats);
-const needsRefresh = cached.length === 0 || cached.some(r => (r.updatedAt as number) + ONE_HOUR < now);
+const staleThreshold = now - ONE_HOUR;
+const needsRefresh = cached.length === 0 || cached.some(r => (r.updatedAt as number) < staleThreshold);
 
 if (needsRefresh) {
   try {
@@ -123,7 +125,6 @@ const chartData = history.reduce((acc, entry) => {
 const chartLabels = Object.values(chartData).map(d => d.date);
 const chartValues = Object.values(chartData).map(d => d.total);
 
-const chartScript = `<script is:inline>window.chartLabels=${JSON.stringify(chartLabels)};window.chartValues=${JSON.stringify(chartValues)};</script>`;
 ---
 
 <BaseLayout title="Pageview Stats" siteTitle={site.title} siteDescription={site.description}>
@@ -137,9 +138,12 @@ const chartScript = `<script is:inline>window.chartLabels=${JSON.stringify(chart
 
     <div class="chart-block">
       <h2>Views Over Time</h2>
-      <div class="chart-wrap">
-        <canvas id="views-chart"></canvas>
-      </div>
+        <div class="chart-wrap">
+          <canvas id="views-chart"
+            data-labels={JSON.stringify(chartLabels)}
+            data-values={JSON.stringify(chartValues)}>
+          </canvas>
+        </div>
     </div>
 
     <div class="stats-sections">
@@ -229,31 +233,29 @@ const chartScript = `<script is:inline>window.chartLabels=${JSON.stringify(chart
     </div>
   </section>
 
-  <Fragment set:html={chartScript} />
-
   <script>
     import Chart from "chart.js/auto";
     
-    const labels = window.chartLabels || [];
-    const values = window.chartValues || [];
-    
     const ctx = document.getElementById("views-chart");
-    if (ctx && labels.length > 0) {
-      new Chart(ctx, {
-        type: "line",
-        data: {
-          labels,
-          datasets: [{
-            data: values,
-            borderColor: "#000",
-            backgroundColor: "transparent",
-            borderWidth: 1.5,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            pointHoverBackgroundColor: "#000",
-            tension: 0.3,
-          }]
-        },
+    if (ctx) {
+      const labels = JSON.parse(ctx.dataset.labels || "[]");
+      const values = JSON.parse(ctx.dataset.values || "[]");
+      if (labels.length > 0) {
+        new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [{
+              data: values,
+              borderColor: "#000",
+              backgroundColor: "transparent",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              pointHoverRadius: 3,
+              pointHoverBackgroundColor: "#000",
+              tension: 0.3,
+            }]
+          },
         options: {
           responsive: true,
           maintainAspectRatio: true,

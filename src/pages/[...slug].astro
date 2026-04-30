@@ -26,7 +26,7 @@ if (!slug) {
 
 const post = allPosts.find((entry) => entry.slug === slug);
 if (!post) {
-  throw new Error(`No story found for slug "${slug}"`);
+  return new Response("Not Found", { status: 404 });
 }
 
 const { Content } = await render(post.entry);
