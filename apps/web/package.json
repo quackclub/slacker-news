@@ -14,7 +14,6 @@
     "@astrojs/node": "^9.1.3",
     "@astrojs/mdx": "^4.0.5",
     "@astrojs/rss": "^4.0.11",
-    "@payloadcms/richtext-lexical": "^3.83.0",
     "@slacker-news/payload-client": "workspace:*",
     "@slacker-news/types": "workspace:*",
     "astro": "^5.5.5"

@@ -17,6 +17,7 @@ export type Post = {
     url: string;
     title: string;
     author?: string;
+    authorSlackId?: string;
     category?: string;
     date: Date;
     excerpt: string;
@@ -131,6 +132,14 @@ function getAuthorName(author: PayloadPost["author"]): string | undefined {
     return author.name ?? author.email ?? undefined;
 }
 
+function getAuthorSlackId(author: PayloadPost["author"]): string | undefined {
+    if (!author || typeof author === "string") {
+        return undefined;
+    }
+
+    return author.slackId ?? undefined;
+}
+
 export async function getSiteConfig(): Promise<SiteConfig> {
     return {
         title: siteData.title,
@@ -151,6 +160,7 @@ export async function getPosts(): Promise<Post[]> {
                 url: getPostURL(entry),
                 title: entry.title,
                 author: getAuthorName(entry.author),
+                authorSlackId: getAuthorSlackId(entry.author),
                 category: entry.category,
                 date: new Date(entry.date),
                 excerpt: toExcerpt(entry),

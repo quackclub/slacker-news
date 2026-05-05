@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { postgresAdapter } from "@payloadcms/db-postgres";
-import { lexicalEditor } from "@payloadcms/richtext-lexical";
+import { richTextEditor } from "./src/lib/richTextEditor";
 import { buildConfig } from "payload";
 import { Posts } from "./src/collections/Posts.ts";
 import { Users } from "./src/collections/Users.ts";
@@ -9,9 +9,12 @@ import { Users } from "./src/collections/Users.ts";
 const filename = fileURLToPath(import.meta.url);
 const dirname = path.dirname(filename);
 
+const adminURL = process.env.PAYLOAD_URL ?? "http://localhost:3000";
+const astroURL = process.env.ASTRO_URL ?? "http://localhost:4321";
+
 export default buildConfig({
   secret: process.env.PAYLOAD_SECRET ?? "change-me-in-production",
-  serverURL: process.env.PAYLOAD_URL ?? "http://localhost:3000",
+  serverURL: adminURL,
   admin: {
     user: Users.slug,
     importMap: {
@@ -19,14 +22,14 @@ export default buildConfig({
     }
   },
   collections: [Users, Posts],
-  editor: lexicalEditor({}),
+  editor: richTextEditor,
   db: postgresAdapter({
     pool: {
       connectionString: process.env.DATABASE_URI
     }
   }),
-  cors: [process.env.ASTRO_URL ?? "http://localhost:4321"],
-  csrf: [process.env.ASTRO_URL ?? "http://localhost:4321"],
+  cors: ["http://localhost:3000", astroURL],
+  csrf: [adminURL, astroURL],
   typescript: {
     outputFile: path.resolve(dirname, "src/payload-types.ts")
   }

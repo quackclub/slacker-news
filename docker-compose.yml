@@ -27,7 +27,7 @@ services:
     environment:
       DATABASE_URI: postgres://slacker:${POSTGRES_PASSWORD}@postgres:5432/slacker_news
       PAYLOAD_SECRET: ${PAYLOAD_SECRET}
-      PAYLOAD_URL: http://payload:3000
+      PAYLOAD_URL: http://localhost:3000
       ASTRO_URL: http://astro:4321
     ports:
       - "3000:3000"

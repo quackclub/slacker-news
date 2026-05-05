@@ -1,4 +1,6 @@
 import type { CollectionConfig, Where } from "payload";
+import { lexicalEditor } from "@payloadcms/richtext-lexical";
+
 
 function createSlug(value?: string, title?: string): string {
   const source = value ?? title ?? "";
@@ -144,9 +146,10 @@ export const Posts: CollectionConfig = {
       defaultValue: false
     },
     {
-      name: "body",
-      type: "richText",
-      required: true
-    }
+  name: "body",
+  type: "richText",
+  required: true,
+  editor: lexicalEditor({}),  // ← explicit instead of relying on global default
+},
   ]
 };
