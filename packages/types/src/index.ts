@@ -6,6 +6,7 @@ export interface PostAuthor {
   id?: string;
   email?: string | null;
   name?: string | null;
+  slackId?: string | null;
 }
 
 export interface Post {
