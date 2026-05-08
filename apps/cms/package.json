@@ -1,0 +1,17 @@
+{
+  "name": "slacker-news-cms",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.9",
+  "scripts": {
+    "dev": "payload run dev",
+    "build": "payload run build",
+    "start": "payload run start"
+  },
+  "dependencies": {
+    "payload": "^3.0.0",
+    "@payloadcms/db-postgres": "^0.1.0",
+    "@payloadcms/richtext-lexical": "*"
+  }
+}

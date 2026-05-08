@@ -1,0 +1,22 @@
+{
+  "name": "slacker-news-astro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "bun@1.2.9",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^5.0.4",
+    "@astrojs/rss": "^4.0.18",
+    "astro": "^6.1.9"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.17",
+    "sass": "^1.99.0"
+  }
+}

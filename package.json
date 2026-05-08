@@ -1,22 +1,20 @@
 {
-  "name": "slacker-news-astro",
-  "version": "1.0.0",
+  "name": "slacker-news-monorepo",
   "private": true,
-  "type": "module",
   "packageManager": "bun@1.2.9",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "check": "astro check"
-  },
-  "dependencies": {
-    "@astrojs/mdx": "^5.0.4",
-    "@astrojs/rss": "^4.0.18",
-    "astro": "^6.1.9"
+    "dev": "turbo dev",
+    "dev:web": "turbo dev --filter=web",
+    "dev:cms": "turbo dev --filter=cms",
+    "build": "turbo build",
+    "check": "turbo check",
+    "postinstall": "node scripts/patch-payload-exports.mjs"
   },
   "devDependencies": {
-    "@types/node": "^22.19.17",
-    "sass": "^1.99.0"
+    "turbo": "^2.0.0"
   }
 }

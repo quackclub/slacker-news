@@ -1,6 +1,13 @@
 {
-  "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "types": ["node"]
-  }
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "strict": true,
+    "types": ["node"],
+    "baseUrl": "."
+  },
+  "include": ["apps/**/*", "packages/**/*"]
 }
