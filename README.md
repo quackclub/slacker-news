@@ -155,4 +155,4 @@ Open an issue or pull request to discuss changes.
 
 ## License
 
-MIT
+GPLv3
