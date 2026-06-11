@@ -1,5 +1,7 @@
 services:
   postgres:
+    profiles:
+      - db
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -24,7 +26,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://sn_cms:sn_cms@postgres:5432/sn_cms
+      DATABASE_URL: ${DATABASE_URL:-postgres://sn_cms:sn_cms@postgres:5432/sn_cms}
       NEXT_PUBLIC_SERVER_URL: ${NEXT_PUBLIC_SERVER_URL:-https://newsroom.matmanna.dev}
       PAYLOAD_SECRET: ${PAYLOAD_SECRET:?Set PAYLOAD_SECRET in .env}
       HACKCLUB_CLIENT_ID: ${HACKCLUB_CLIENT_ID}
@@ -32,9 +34,6 @@ services:
       HACKCLUB_REDIRECT_URI: ${HACKCLUB_REDIRECT_URI:-https://newsroom.matmanna.dev/admin/auth/hackclub/callback}
       ASTRO_URL: ${ASTRO_URL:-http://web:80}
       PREVIEW_SECRET: ${PREVIEW_SECRET}
-    depends_on:
-      postgres:
-        condition: service_healthy
     restart: unless-stopped
 
   web:
