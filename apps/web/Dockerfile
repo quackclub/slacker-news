@@ -13,5 +13,6 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 ENV HOST=0.0.0.0 PORT=6765
+ENV CMS_URL=http://cms:3000
 EXPOSE 6765
 CMD ["bun", "dist/server/entry.mjs"]
