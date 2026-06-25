@@ -26,6 +26,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/src ./src
 COPY --from=builder --chown=nextjs:nodejs /app/scripts/seed-trigger.mjs ./
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules /app/node_modules
 USER nextjs
-EXPOSE 3000
-ENV PORT=3000
+EXPOSE 6766
+ENV PORT=6766
 CMD ["sh", "-c", "/usr/bin/node /app/node_modules/.bin/payload migrate && bun run start & sleep 8 && /usr/bin/node seed-trigger.mjs && wait"]
