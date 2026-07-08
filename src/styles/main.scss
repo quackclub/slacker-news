@@ -119,6 +119,43 @@ a {
   align-items: stretch;
 }
 
+.page-shell {
+  width: 100%;
+  position: relative;
+  padding: 0 16px;
+  box-sizing: border-box;
+  --wrapper-width: min(calc(800px - 30px), calc(100vw - 32px));
+}
+
+.page-main {
+  min-width: 0;
+}
+
+.page-sidebar {
+  min-width: 0;
+  width: 280px;
+  position: absolute;
+  top: 0;
+  left: calc((100vw - var(--wrapper-width)) / 2 + var(--wrapper-width) - 15px);
+  height: calc(66vh + 20px);
+}
+
+.page-sidebar__inner {
+  width: 100%;
+  height: 100%;
+}
+
+@media (max-width: 1300px) {
+  .page-shell {
+    display: block;
+    padding: 0 16px;
+  }
+
+  .page-sidebar {
+    display: none;
+  }
+}
+
 .front-bottom {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

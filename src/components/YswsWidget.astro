@@ -1,0 +1,487 @@
+---
+type RawProgram = Record<string, unknown>;
+
+type YswsProgram = {
+  id: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  websiteUrl?: string;
+  iconUrl?: string;
+  description?: string;
+};
+
+type YswsCatalogProgram = {
+  name?: string;
+  website?: string | null;
+  description?: string;
+  detailedDescription?: string;
+  status?: string;
+};
+
+const apiUrl = "https://events-api.hackclub.dev/api/programs/active";
+
+function readString(source: RawProgram, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = source[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function cleanDescription(value: string | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const stripped = value.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+  return stripped || undefined;
+}
+
+function parseProgram(source: RawProgram): YswsProgram | null {
+  const id = readString(source, ["id", "ID"]);
+  const name = readString(source, ["Name", "name"]);
+
+  if (!id || !name) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    startDate: readString(source, ["Start Date", "startDate"]),
+    endDate: readString(source, ["End Date", "endDate"]),
+    websiteUrl: readString(source, ["Website URL", "websiteUrl", "Website"]),
+    iconUrl: readString(source, ["Icon – CDN Link", "Icon - CDN Link", "iconUrl"]),
+  };
+}
+
+function formatDate(value?: string): string {
+  if (!value) {
+    return "Date TBD";
+  }
+
+  const parsed = new Date(`${value}T12:00:00Z`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
+function formatShortDate(value?: string): string {
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new Date(`${value}T12:00:00Z`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "numeric",
+    day: "numeric",
+  }).format(parsed);
+}
+
+let programs: YswsProgram[] = [];
+let fetchError: string | null = null;
+let catalogByName = new Map<string, string>();
+
+try {
+  const [response, catalogResponse] = await Promise.all([
+    fetch(apiUrl, {
+    headers: {
+      accept: "application/json",
+    },
+    }),
+    fetch("https://ysws.hackclub.com/api.json", {
+      headers: {
+        accept: "application/json",
+      },
+    }),
+  ]);
+
+  if (!response.ok) {
+    throw new Error(`Request failed with status ${response.status}`);
+  }
+
+  if (!catalogResponse.ok) {
+    throw new Error(`YSWS catalog request failed with status ${catalogResponse.status}`);
+  }
+
+  const payload: unknown = await response.json();
+  const catalogPayload: unknown = await catalogResponse.json();
+  const rawPrograms: RawProgram[] = Array.isArray(payload)
+    ? payload as RawProgram[]
+    : typeof payload === "object" && payload !== null && Array.isArray((payload as { data?: unknown }).data)
+      ? (payload as { data: RawProgram[] }).data
+      : [];
+
+  const catalogSections = catalogPayload && typeof catalogPayload === "object"
+    ? Object.values(catalogPayload as Record<string, unknown>)
+    : [];
+
+  catalogByName = new Map(
+    catalogSections
+      .flatMap((section) => Array.isArray(section) ? section : [])
+      .filter((entry): entry is YswsCatalogProgram => Boolean(entry) && typeof entry === "object")
+      .filter((entry) => entry.status === "active")
+      .map((entry) => {
+        const name = entry.name?.trim();
+        const description = cleanDescription(entry.description ?? entry.detailedDescription);
+
+        return name && description ? [normalizeKey(name), description] as const : null;
+      })
+      .filter((entry): entry is readonly [string, string] => Boolean(entry))
+  );
+
+  programs = rawPrograms
+    .map((item: RawProgram) => parseProgram(item))
+    .filter((program: YswsProgram | null): program is YswsProgram => Boolean(program))
+    .map((program) => ({
+      ...program,
+      description: catalogByName.get(normalizeKey(program.name)),
+    }))
+    .sort((left: YswsProgram, right: YswsProgram) => {
+      const leftTime = Date.parse(left.startDate ?? "") || 0;
+      const rightTime = Date.parse(right.startDate ?? "") || 0;
+
+      return rightTime - leftTime;
+    });
+} catch (error) {
+  fetchError = error instanceof Error ? error.message : "Unknown API error";
+}
+
+const loopPrograms = [...programs, ...programs];
+const totalPrograms = programs.length;
+---
+
+<aside class="front-block ysws-programs" aria-labelledby="ysws-programs-title" data-ysws-carousel>
+  <div class="ysws-programs__eyebrow">PROGRAMS</div>
+
+  {fetchError ? (
+    <div class="ysws-programs__empty">
+      <strong>Feed unavailable.</strong>
+      <p>The live YSWS programs feed could not be loaded right now.</p>
+    </div>
+  ) : programs.length > 0 ? (
+    <div class="ysws-programs__viewport" aria-label="Active YSWS programs carousel">
+      <div class="ysws-programs__track" style={`--program-count: ${programs.length};`}>
+        {loopPrograms.map((program, index) => {
+          const link = program.websiteUrl ?? `https://events-api.hackclub.dev/api/programs/${program.id}`;
+          const startDateLabel = formatShortDate(program.startDate);
+          const endDateLabel = formatShortDate(program.endDate);
+
+          return (
+            <a
+              href={link}
+              class="ysws-programs__item"
+              target={program.websiteUrl ? "_blank" : undefined}
+              rel={program.websiteUrl ? "noreferrer noopener" : undefined}
+              aria-label={`${program.name} program`}
+              aria-hidden={index >= programs.length ? "true" : undefined}
+              tabindex={index >= programs.length ? -1 : undefined}
+            >
+              <div class="ysws-programs__icon">
+                {program.iconUrl ? (
+                  <img src={program.iconUrl} alt="" loading="lazy" decoding="async" />
+                ) : (
+                  <span>{program.name.slice(0, 2).toUpperCase()}</span>
+                )}
+              </div>
+
+              <div class="ysws-programs__copy">
+                <div class="ysws-programs__title-row">
+                  <div class="ysws-programs__name">{program.name}</div>
+                  {(startDateLabel || endDateLabel) && (
+                    <div class="ysws-programs__date-range">
+                      {startDateLabel && <span>{startDateLabel}</span>}
+                      {startDateLabel && endDateLabel && <span> - </span>}
+                      {endDateLabel && <span>{endDateLabel}</span>}
+                    </div>
+                  )}
+                </div>
+                {program.description && <div class="ysws-programs__description">{program.description}</div>}
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    </div>
+  ) : (
+    <div class="ysws-programs__empty">
+      <strong>No active programs returned.</strong>
+      <p>The API is reachable, but it did not return any active YSWS events.</p>
+    </div>
+  )}
+<hr class="opinion-divider">
+
+  <a
+    class=" archive-link"
+    href="https://events-api.hackclub.dev/"
+    target="_blank"
+    rel="noreferrer noopener"
+  >
+    All PROGRAMS &rarr;
+  </a>
+</aside>
+
+<style>
+  .ysws-programs {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .ysws-programs__eyebrow {
+    font-size: 0.75rem;
+    font-family: Georgia, serif;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: #555;
+  }
+
+  .ysws-programs__meta {
+    font-size: 0.72rem;
+    color: #777;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .ysws-programs__viewport {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    border: 2px #000;
+    border-top: solid;
+    /* border-radius: 12px; */
+    /* background: #fff; */
+  }
+
+  .ysws-programs__track {
+    --row-height: 60px;
+    --row-gap: 10px;
+    display: grid;
+    gap: var(--row-gap);
+    /* padding: 10px; */
+    transition: transform 360ms ease-out;
+    will-change: transform;
+  }
+
+  .ysws-programs__item {
+    height: var(--row-height);
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    color: #000;
+    min-width: 0;
+  }
+
+  .ysws-programs__icon {
+    width: 30px;
+    height: 30px;
+    border: 1.5px solid #000;
+    border-radius: 6px;
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    background: #f4f4ef;
+    font-size: 0.62rem;
+    font-weight: 700;
+  }
+
+  .ysws-programs__icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(1);
+  }
+
+  .ysws-programs__copy {
+    min-width: 0;
+  }
+
+  .ysws-programs__title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .ysws-programs__name {
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.15;
+    text-transform: uppercase;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ysws-programs__date-range {
+    font-size: 0.72rem;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  .ysws-programs__description {
+    margin-top: 5px;
+    font-size: 0.78rem;
+    line-height: 1.35;
+    color: #444;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .ysws-programs__item:hover .ysws-programs__name {
+    text-decoration: underline;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ysws-programs__track {
+      transition: none;
+    }
+  }
+
+  .ysws-programs__empty {
+    border: 2px dashed #000;
+    border-radius: 12px;
+    padding: 14px;
+    background: #f8f8f4;
+  }
+
+  .ysws-programs__empty strong {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 1rem;
+  }
+
+  .ysws-programs__empty p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: #444;
+  }
+
+  .ysws-programs__footer-link {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    margin-top: auto;
+    padding-top: 8px;
+    font-size: 0.78rem;
+    font-family: Georgia, serif;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #000;
+  }
+
+  .ysws-programs__footer-link:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<script>
+  const rail = document.querySelector("[data-ysws-carousel]");
+
+  if (rail instanceof HTMLElement) {
+    const track = rail.querySelector(".ysws-programs__track");
+
+    if (track instanceof HTMLElement) {
+      const trackElement = /** @type {HTMLElement} */ (track);
+      const reduceMotion = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+      if (!reduceMotion) {
+        const programCount = Number(trackElement.style.getPropertyValue("--program-count")) || 0;
+        const stepDelay = 7000;
+        const moveDuration = 360;
+        let currentIndex = 0;
+        let stepDistance = 0;
+        let timerId = 0;
+
+        const measureStep = () => {
+          const item = trackElement.querySelector(".ysws-programs__item");
+
+          if (!(item instanceof HTMLElement)) {
+            return false;
+          }
+
+          const computedTrack = window.getComputedStyle(trackElement);
+          const rowGap = Number.parseFloat(computedTrack.rowGap || computedTrack.gap || "0") || 0;
+          stepDistance = item.getBoundingClientRect().height + rowGap;
+          return stepDistance > 0;
+        };
+
+        // @ts-expect-error - Astro's inline script checker loses the JSDoc type here.
+        function setPosition(index, immediate = false) {
+          trackElement.style.transition = immediate ? "none" : `transform ${moveDuration}ms ease-out`;
+          trackElement.style.transform = `translateY(${-stepDistance * index}px)`;
+
+          if (immediate) {
+            window.requestAnimationFrame(() => {
+              trackElement.style.transition = `transform ${moveDuration}ms ease-out`;
+            });
+          }
+        }
+
+        const schedule = () => {
+          window.clearTimeout(timerId);
+          timerId = window.setTimeout(() => {
+            if (currentIndex + 1 < programCount) {
+              currentIndex += 1;
+              setPosition(currentIndex);
+              schedule();
+              return;
+            }
+
+            currentIndex = programCount;
+            setPosition(currentIndex);
+
+            window.setTimeout(() => {
+              currentIndex = 0;
+              setPosition(currentIndex, true);
+              schedule();
+            }, moveDuration + 40);
+          }, stepDelay);
+        };
+
+        if (programCount > 1 && measureStep()) {
+          setPosition(0, true);
+          schedule();
+
+          window.addEventListener("resize", () => {
+            if (measureStep()) {
+              setPosition(currentIndex, true);
+            }
+          });
+        }
+      }
+    }
+  }
+</script>

@@ -30,6 +30,7 @@ const {
   articlePublishedTime,
   articleModifiedTime
 } = Astro.props;
+const hasSidebar = Astro.slots.has("sidebar");
 const pageTitle = title && title !== siteTitle ? `${title} | ${siteTitle}` : siteTitle;
 const pageDescription = description ?? siteDescription;
 
@@ -167,10 +168,26 @@ const socialImageAlt = openGraphImageAlt ?? `${siteTitle} social preview`;
       </div>
     </header>
 
+
     <main class="page-content" aria-label="Content">
-      <div class="wrapper">
-        <slot />
-      </div>
+      {hasSidebar ? (
+        <div class="page-shell">
+          <div class="page-main">
+            <div class="wrapper">
+              <slot />
+            </div>
+          </div>
+          <aside class="page-sidebar" aria-label="Sidebar">
+            <div class="page-sidebar__inner">
+              <slot name="sidebar" />
+            </div>
+          </aside>
+        </div>
+      ) : (
+        <div class="wrapper">
+          <slot />
+        </div>
+      )}
     </main>
     <AbacusCounter pathname={Astro.url.pathname} />
   </body>

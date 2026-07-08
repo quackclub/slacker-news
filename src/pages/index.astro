@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 import AuthorList from "../components/AuthorList.astro";
 import SlackMention from "../components/SlackMention.astro";
+import YswsWidget from "../components/YswsWidget.astro";
 import {
   getAcknowledgements,
   getChangelogEntries,
@@ -48,6 +49,8 @@ const acknowledgements = await getAcknowledgements();
 ---
 
 <BaseLayout siteTitle={site.title} siteDescription={site.description}>
+  <YswsWidget slot="sidebar" />
+
   <div class="newspaper-front">
     <div class="front-top">
       {headline && (
@@ -57,8 +60,6 @@ const acknowledgements = await getAcknowledgements();
               <img
                 src={headline.leadingImage.src}
                 alt={headline.leadingImage.alt}
-                loading="eager"
-                decoding="async"
               />
             </div>
           )}
@@ -291,6 +292,65 @@ const acknowledgements = await getAcknowledgements();
         if (document.fonts) {
           void document.fonts.ready.then(scheduleFit);
         }
+      }
+    }
+
+    const pageShell = document.querySelector(".page-shell");
+    const sidebar = document.querySelector(".page-sidebar");
+    const newsGrid = document.querySelector(".front-bottom");
+    const frontTop = document.querySelector(".front-top");
+
+    if (
+      pageShell instanceof HTMLElement &&
+      sidebar instanceof HTMLElement &&
+      newsGrid instanceof HTMLElement &&
+      frontTop instanceof HTMLElement
+    ) {
+      const updateSidebarHeight = () => {
+        const cards = Array.from(newsGrid.children).filter((child): child is HTMLElement => child instanceof HTMLElement);
+
+        if (cards.length === 0) {
+          return;
+        }
+
+        const firstRowTop = cards[0].getBoundingClientRect().top;
+        let firstRowBottom = firstRowTop;
+
+        for (const card of cards) {
+          const rect = card.getBoundingClientRect();
+
+          if (Math.abs(rect.top - firstRowTop) > 2) {
+            break;
+          }
+
+          firstRowBottom = Math.max(firstRowBottom, rect.bottom);
+        }
+
+        const sidebarTop = sidebar.getBoundingClientRect().top;
+        const measuredHeight = Math.max(0, firstRowBottom - sidebarTop);
+        const minimumHeight = window.innerWidth < 1300 ? 640 : 0;
+        const sidebarHeight = Math.max(measuredHeight, minimumHeight);
+
+        sidebar.style.setProperty("--ysws-sidebar-height", `${sidebarHeight}px`);
+      };
+
+      const scheduleSidebarHeightUpdate = () => {
+        window.requestAnimationFrame(updateSidebarHeight);
+      };
+
+      scheduleSidebarHeightUpdate();
+      window.addEventListener("resize", scheduleSidebarHeightUpdate);
+      window.addEventListener("load", scheduleSidebarHeightUpdate);
+
+      if (document.fonts) {
+        void document.fonts.ready.then(scheduleSidebarHeightUpdate);
+      }
+
+      if ("ResizeObserver" in window) {
+        const observer = new ResizeObserver(scheduleSidebarHeightUpdate);
+        observer.observe(pageShell);
+        observer.observe(frontTop);
+        observer.observe(newsGrid);
       }
     }
   </script>
