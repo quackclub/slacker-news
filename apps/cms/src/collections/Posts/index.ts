@@ -63,6 +63,9 @@ export const Posts: CollectionConfig<'posts'> = {
         req,
       }),
     useAsTitle: 'title',
+    components: {
+      beforeList: ['@/components/ImportMdxButton'],
+    },
   },
   fields: [
     {
