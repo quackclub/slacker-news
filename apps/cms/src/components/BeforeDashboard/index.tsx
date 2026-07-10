@@ -40,7 +40,7 @@ const BeforeDashboard: React.FC = () => {
 
   const fetchFiles = useCallback(async () => {
     try {
-      const res = await fetch('/next/import-mdx', { credentials: 'include' })
+      const res = await fetch('/api/import-mdx', { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to fetch files')
       const data = await res.json()
       setFiles(data.files || [])
@@ -59,7 +59,7 @@ const BeforeDashboard: React.FC = () => {
     async (category: string, slug: string) => {
       setImporting(slug)
       try {
-        const res = await fetch('/next/import-mdx', {
+        const res = await fetch('/api/import-mdx', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -90,7 +90,7 @@ const BeforeDashboard: React.FC = () => {
   const importAll = useCallback(async () => {
     setImporting('all')
     try {
-      const res = await fetch('/next/import-mdx', {
+      const res = await fetch('/api/import-mdx', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
