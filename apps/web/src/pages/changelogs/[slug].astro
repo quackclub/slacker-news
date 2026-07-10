@@ -2,7 +2,6 @@
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import AuthorList from "../../components/AuthorList.astro";
 import { formatStoryDate, getChangelogEntries, getSiteConfig, type LongChangelogEntry } from "../../lib/content";
-import { render } from "astro:content";
 
 const site = await getSiteConfig();
 const entries = await getChangelogEntries();
@@ -14,8 +13,6 @@ const changelog = entries.find(
 if (!changelog) {
   return Astro.redirect("/changelogs/");
 }
-
-const { Content } = await render(changelog.entry);
 ---
 
 <BaseLayout
@@ -64,9 +61,7 @@ const { Content } = await render(changelog.entry);
       </div>
     )}
 
-    <div class="story-body">
-      <Content />
-    </div>
+    <div class="story-body" set:html={changelog.contentHtml} />
 
     <footer class="story-footer">
       <a href="/changelogs/">&larr; All changelogs</a>

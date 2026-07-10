@@ -8,19 +8,6 @@ const pages = defineCollection({
     })
 });
 
-const changelogs = defineCollection({
-    loader: glob({ pattern: "**/*.mdx", base: "../../apps/cms/content/posts/changelogs" }),
-    schema: z.object({
-        title: z.string(),
-        date: z.coerce.date(),
-        author: z.union([z.string(), z.array(z.string())]),
-        excerpt: z.string().optional(),
-        responseTo: z.union([z.string(), z.array(z.string())]).optional(),
-        followUpTo: z.union([z.string(), z.array(z.string())]).optional()
-    })
-});
-
 export const collections = {
-    pages,
-    changelogs
+    pages
 };

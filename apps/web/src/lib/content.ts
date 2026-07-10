@@ -1,8 +1,8 @@
-import { getCollection, getEntry, type CollectionEntry } from "astro:content";
+import { getEntry, type CollectionEntry } from "astro:content";
 import siteData from "../data/site.json";
 import changelogData from "../data/changelog.json";
 import acknowledgementsData from "../data/acknowledgements.json";
-import { fetchPosts, type CmsPost } from "./cms";
+import { fetchPosts, fetchChangelogs, type CmsPost, type CmsChangelog } from "./cms";
 
 export type SiteConfig = {
     title: string;
@@ -61,7 +61,7 @@ export type LongChangelogEntry = ChangelogBase & {
         src: string;
         alt: string;
     };
-    entry: CollectionEntry<"changelogs">;
+    contentHtml: string;
     responseTo?: PostReference[];
     followUpTo?: PostReference[];
 };
@@ -145,15 +145,6 @@ function extractImageFromHtml(html: string): { src: string; alt: string } | unde
     return undefined;
 }
 
-function isTableBlock(block: string): boolean {
-    return block.split("\n").some((line) => /^\s*\|?[\s\-:|]+\|[\s\-:|]+\|?\s*$/.test(line) && /-/.test(line));
-}
-
-function isListBlock(block: string): boolean {
-    const listLines = block.split("\n").filter((line) => /^\s*([-*+]|\d+\.)\s+/.test(line));
-    return listLines.length >= 2;
-}
-
 function cmsPostToPost(cmsPost: CmsPost): Post {
     const paragraphs = extractParagraphsFromHtml(cmsPost.contentHtml);
     const leadingImage = cmsPost.heroImage?.url
@@ -223,7 +214,7 @@ export async function getChangelogEntries(): Promise<ChangelogEntry[]> {
         slackIds: getAuthorSlackIds(entry.author)
     }));
 
-    const longCollection = await getCollection("changelogs");
+    const cmsChangelogs = await fetchChangelogs();
     const posts = await getPosts();
     const resolveSlugs = (raw: string | string[] | undefined): PostReference[] | undefined => {
         if (!raw) return undefined;
@@ -234,25 +225,24 @@ export async function getChangelogEntries(): Promise<ChangelogEntry[]> {
             .map((p) => ({ slug: p.slug, url: p.url, title: p.title }));
         return refs.length ? refs : undefined;
     };
-    const longEntries: LongChangelogEntry[] = longCollection.map((entry) => {
-        const bodyBlocks = getBodyBlocks(entry.body!);
-        const leadingImage = extractImageFromBlock(bodyBlocks[0] ?? "");
-        const paragraphs = extractTextBlocks(entry.body!);
-        const dateString = entry.data.date.toISOString().slice(0, 10);
+    const longEntries: LongChangelogEntry[] = cmsChangelogs.map((cl) => {
+        const paragraphs = extractParagraphsFromHtml(cl.contentHtml);
+        const leadingImage = extractImageFromHtml(cl.contentHtml);
+        const dateString = cl.publishedAt ? cl.publishedAt.slice(0, 10) : '';
+        const authorArr = Array.isArray(cl.authors) ? cl.authors : [cl.authors].filter(Boolean);
+        const excerpt = cl.excerpt || stripHtml(paragraphs[0] || "");
         return {
             kind: "long",
-            slug: entry.id,
-            url: `/changelogs/${entry.id}/`,
-            title: entry.data.title,
+            slug: cl.slug,
+            url: `/changelogs/${cl.slug}/`,
+            title: cl.title,
             date: dateString,
-            author: entry.data.author,
-            slackIds: getAuthorSlackIds(entry.data.author),
-            excerpt: toExcerpt({ body: entry.body!, data: entry.data }),
+            author: authorArr.length === 1 ? authorArr[0] : authorArr,
+            slackIds: getAuthorSlackIds(authorArr),
+            excerpt,
             paragraphs,
             leadingImage,
-            entry,
-            responseTo: resolveSlugs(entry.data.responseTo),
-            followUpTo: resolveSlugs(entry.data.followUpTo)
+            contentHtml: cl.contentHtml,
         };
     });
 
@@ -290,104 +280,3 @@ export async function getPageEntry(slug: string): Promise<CollectionEntry<"pages
 }
 
 export { truncateWords };
-
-// Keep local helpers for changelogs (unchanged from original)
-
-function replaceSlackMentionComponents(input: string): string {
-    return input.replace(/<SlackMention\s+name="([^"]+)"\s+id="([^"]+)"\s*\/?>/g, (_match, name) => `@${name}`);
-}
-
-function replaceSlackChannelComponents(input: string): string {
-    return input.replace(/<SlackChannel\s+id="([^"]+)"\s*\/?>/g, (_match, id) => `#${id}`);
-}
-
-function stripMarkdown(input: string): string {
-    return normalizeWhitespace(
-        replaceSlackChannelComponents(replaceSlackMentionComponents(input))
-            .replace(/^import\s.+$/gm, "")
-            .replace(/^export\s.+$/gm, "")
-            .replace(/^#{1,6}\s+/gm, "")
-            .replace(/^\s*[-*+]\s+/gm, "")
-            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "$1")
-            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1")
-            .replace(/`([^`]+)`/g, "$1")
-            .replace(/\*\*([^*]+)\*\*/g, "$1")
-            .replace(/\*([^*]+)\*/g, "$1")
-            .replace(/_{1,2}([^_]+)_{1,2}/g, "$1")
-            .replace(/<[^>]+>/g, " ")
-    );
-}
-
-function toExcerpt(entry: { body: string; data: { excerpt?: string } }): string {
-    const explicitExcerpt = entry.data.excerpt;
-    if (explicitExcerpt) {
-        return stripMarkdown(explicitExcerpt);
-    }
-
-    const blocks = extractTextBlocks(entry.body);
-    const substantial = blocks.find((b) => {
-        const cleaned = stripMarkdown(b);
-        const wordCount = cleaned.split(/\s+/).filter(Boolean).length;
-        return wordCount >= 8 && cleaned.length >= 60;
-    });
-
-    const source = substantial ?? blocks[0] ?? "";
-    return stripMarkdown(source);
-}
-
-function getBodyBlocks(body: string): string[] {
-    return body
-        .replace(/^import\s.+$/gm, "")
-        .replace(/^export\s.+$/gm, "")
-        .split(/\n{2,}/)
-        .map((block) => block.trim())
-        .filter(Boolean);
-}
-
-function extractImageFromBlock(block: string): { src: string; alt: string } | undefined {
-    const markdownImage = block.match(/^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)$/s);
-    if (markdownImage) {
-        return {
-            alt: markdownImage[1],
-            src: markdownImage[2]
-        };
-    }
-
-    const imgTag = block.match(/<img\b[^>]*>/i);
-    if (!imgTag) {
-        return undefined;
-    }
-
-    const tag = imgTag[0];
-    const src = getAttributeValue(tag, "src");
-    if (!src) {
-        return undefined;
-    }
-
-    return {
-        src,
-        alt: getAttributeValue(tag, "alt") ?? ""
-    };
-}
-
-function getAttributeValue(tag: string, attribute: string): string | undefined {
-    return tag.match(new RegExp(`${attribute}=["']([^"']*)["']`, "i"))?.[1];
-}
-
-function extractTextBlocks(body: string): string[] {
-    const blocks = getBodyBlocks(body);
-    const leadingImage = extractImageFromBlock(blocks[0] ?? "");
-
-    return blocks
-        .slice(leadingImage ? 1 : 0)
-        .filter((block) => {
-            if (/^#{1,6}\s+/.test(block.trim())) return false;
-            if (/^[=-]{3,}\s*$/.test(block.trim())) return false;
-            if (isTableBlock(block)) return false;
-            if (isListBlock(block)) return false;
-            if (/^<Caption[\s>]/i.test(block.trim())) return false;
-            return true;
-        })
-        .map((block) => stripMarkdown(block))
-        .filter(Boolean);
-}
