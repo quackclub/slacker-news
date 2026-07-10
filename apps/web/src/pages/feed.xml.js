@@ -11,15 +11,50 @@ function escapeHtml(input) {
         .replace(/>/g, "&gt;");
 }
 
+async function trackFeedView(context) {
+    if (import.meta.env.DEV || !context.site || context.isPrerendered) {
+        return;
+    }
+
+    const feedUrl = new URL("/feed.xml", context.site).toString();
+    const siteDomain = new URL(context.site).hostname;
+    const headers = context.request.headers;
+    const userAgent = headers.get("user-agent") ?? undefined;
+    const acceptLanguage = headers.get("accept-language") ?? undefined;
+    const referer = headers.get("referer") ?? undefined;
+    const forwardedFor =
+        headers.get("x-forwarded-for") ?? headers.get("cf-connecting-ip") ?? context.clientAddress ?? undefined;
+
+    await fetch("https://plausible.io/api/event", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...(userAgent ? { "User-Agent": userAgent } : {}),
+            ...(acceptLanguage ? { "Accept-Language": acceptLanguage } : {}),
+            ...(referer ? { Referer: referer } : {}),
+            ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {})
+        },
+        body: JSON.stringify({
+            name: "pageview",
+            url: feedUrl,
+            domain: siteDomain
+        })
+    }).catch(() => { });
+}
+
 export async function GET(context) {
     const site = await getSiteConfig();
     const posts = await getPosts();
     const changelogs = await getChangelogEntries();
 
+    await trackFeedView(context);
+
     const postItems = posts.map((post) => {
         const baseSlug = post.slug.split("/").pop();
         const legacyKey = baseSlug ? `/${baseSlug}` : null;
         const legacyLink = legacyKey && legacyPaths.has(legacyKey) ? `${legacyKey}/` : post.url;
+        const leadingImageSrc = post.leadingImage?.src ?? "https://cdn.hackclub.com/019dbae9-5242-745b-acd2-3476ab3c52a3/og-default.png";
+        const leadingImageAlt = post.leadingImage?.alt ?? `Slacker News social preview`;
 
         const paragraphContent = post.paragraphs.length
             ? post.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")
@@ -30,7 +65,14 @@ export async function GET(context) {
             description: post.excerpt,
             pubDate: post.date,
             link: legacyLink,
-            content: paragraphContent
+            content: paragraphContent,
+
+            // @astrojs/rss doesn't support Media RSS
+            customData: `
+                <media:content url="${leadingImageSrc}" medium="image" />
+                <media:thumbnail url="${leadingImageSrc}" />
+                <media:title type="plain">${leadingImageAlt}</media:title>
+            `
         };
     });
 
@@ -58,6 +100,9 @@ export async function GET(context) {
         title: site.title,
         description: site.description,
         site: context.site,
+        xmlns: {
+            media: 'http://search.yahoo.com/mrss/',
+        },
         items
     });
 }

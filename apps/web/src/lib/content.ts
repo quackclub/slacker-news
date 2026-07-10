@@ -145,6 +145,15 @@ function extractImageFromHtml(html: string): { src: string; alt: string } | unde
     return undefined;
 }
 
+function isTableBlock(block: string): boolean {
+    return block.split("\n").some((line) => /^\s*\|?[\s\-:|]+\|[\s\-:|]+\|?\s*$/.test(line) && /-/.test(line));
+}
+
+function isListBlock(block: string): boolean {
+    const listLines = block.split("\n").filter((line) => /^\s*([-*+]|\d+\.)\s+/.test(line));
+    return listLines.length >= 2;
+}
+
 function cmsPostToPost(cmsPost: CmsPost): Post {
     const paragraphs = extractParagraphsFromHtml(cmsPost.contentHtml);
     const leadingImage = cmsPost.heroImage?.url
@@ -374,6 +383,9 @@ function extractTextBlocks(body: string): string[] {
         .filter((block) => {
             if (/^#{1,6}\s+/.test(block.trim())) return false;
             if (/^[=-]{3,}\s*$/.test(block.trim())) return false;
+            if (isTableBlock(block)) return false;
+            if (isListBlock(block)) return false;
+            if (/^<Caption[\s>]/i.test(block.trim())) return false;
             return true;
         })
         .map((block) => stripMarkdown(block))
