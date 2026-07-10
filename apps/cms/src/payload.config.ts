@@ -22,7 +22,7 @@ export default buildConfig({
   admin: {
     components: {
       beforeLogin: ['@/components/BeforeLogin'],
-      // beforeDashboard: ['@/components/BeforeDashboard'],
+      beforeDashboard: ['@/components/BeforeDashboard'],
       graphics: {
         Logo: '@/components/CmsLogo',
         Icon: '@/components/CmsIcon',

@@ -9,16 +9,134 @@
     }
   }
 
-  &__instructions {
-    list-style: decimal;
-    margin-bottom: base(0.5);
+  &__actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin: 12px 0;
+  }
 
-    & li {
-      width: 100%;
+  &__import-all {
+    appearance: none;
+    background: #000;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.85;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+
+  &__toggle {
+    appearance: none;
+    background: none;
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+    font-size: 0.85rem;
+    cursor: pointer;
+
+    &:hover {
+      opacity: 0.85;
+    }
+  }
+
+  &__files {
+    margin-top: 12px;
+    border: 1px solid #e2e2e2;
+    border-radius: 6px;
+    background: #fafafa;
+    padding: 16px;
+  }
+
+  &__category {
+    margin-bottom: 16px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__category-title {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #555;
+  }
+
+  &__file-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  &__file-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    font-size: 0.85rem;
+  }
+
+  &__file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__file-slug {
+    color: #999;
+    margin-left: 8px;
+    font-size: 0.8rem;
+  }
+
+  &__import-btn {
+    appearance: none;
+    background: none;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 8px;
+
+    &:hover {
+      background: #f0f0f0;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
   }
 
   & a:hover {
     opacity: 0.85;
+  }
+
+  code {
+    background: #eee;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-size: 0.85em;
   }
 }
