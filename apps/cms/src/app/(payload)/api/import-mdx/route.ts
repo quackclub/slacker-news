@@ -192,7 +192,7 @@ function mdToLexical(md: string): LexNode {
       flushQuote()
       numberedList = null
       if (!bulletList) {
-        bulletList = { type: 'list', listType: 'bullet', children: [], format: '', indent: 0, version: 1 }
+        bulletList = { type: 'list', listType: 'bullet', start: 1, tag: 'ul', children: [], format: '', indent: 0, version: 1, direction: null }
         children.push(bulletList)
       }
       ;(bulletList.children as LexNode[]).push({
@@ -202,6 +202,7 @@ function mdToLexical(md: string): LexNode {
         format: '',
         indent: 0,
         version: 1,
+        direction: null,
       })
       continue
     }
@@ -212,7 +213,7 @@ function mdToLexical(md: string): LexNode {
       flushQuote()
       bulletList = null
       if (!numberedList) {
-        numberedList = { type: 'list', listType: 'number', children: [], format: '', indent: 0, version: 1 }
+        numberedList = { type: 'list', listType: 'number', start: 1, tag: 'ol', children: [], format: '', indent: 0, version: 1, direction: null }
         children.push(numberedList)
       }
       ;(numberedList.children as LexNode[]).push({
@@ -222,6 +223,7 @@ function mdToLexical(md: string): LexNode {
         format: '',
         indent: 0,
         version: 1,
+        direction: null,
       })
       continue
     }
