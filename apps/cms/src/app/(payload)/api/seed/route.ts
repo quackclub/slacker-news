@@ -5,7 +5,7 @@ import fs from 'fs'
 import path from 'path'
 
 const SEED_SECRET = process.env.SEED_SECRET
-const MDX_POSTS_DIR = process.env.MDX_POSTS_DIR || '/app/mdx-posts'
+const MDX_POSTS_DIR = process.env.MDX_POSTS_DIR || path.resolve(process.cwd(), 'packages/content/posts')
 
 const CATEGORIES = ['news', 'opinion', 'essays', 'changelogs'] as const
 
