@@ -9,12 +9,12 @@ const CATEGORIES = ['news', 'opinion', 'essays', 'changelogs'] as const
 function getContentDir(): string {
   if (process.env.CONTENT_DIR) return process.env.CONTENT_DIR
 
-  // In Docker runner, process.cwd() is /app → content at /app/packages/content/posts
-  const dockerPath = path.resolve(process.cwd(), 'packages/content/posts')
+  // In Docker runner, process.cwd() is /app → content at /app/content/posts
+  const dockerPath = path.resolve(process.cwd(), 'content/posts')
   if (fs.existsSync(dockerPath)) return dockerPath
 
-  // Locally, process.cwd() is apps/cms → content at ../../packages/content/posts
-  const localPath = path.resolve(process.cwd(), '../../packages/content/posts')
+  // Locally, process.cwd() is apps/cms → content at ./content/posts
+  const localPath = path.resolve(process.cwd(), 'content/posts')
   if (fs.existsSync(localPath)) return localPath
 
   return dockerPath

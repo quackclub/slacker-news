@@ -9,7 +9,7 @@ const pages = defineCollection({
 });
 
 const changelogs = defineCollection({
-    loader: glob({ pattern: "**/*.mdx", base: "../../packages/content/posts/changelogs" }),
+    loader: glob({ pattern: "**/*.mdx", base: "../../apps/cms/content/posts/changelogs" }),
     schema: z.object({
         title: z.string(),
         date: z.coerce.date(),
