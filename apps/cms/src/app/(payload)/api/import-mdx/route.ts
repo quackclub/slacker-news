@@ -423,10 +423,14 @@ export async function POST(request: Request) {
         }
 
         if (data.responseTo) {
-          postData.responseTo = Array.isArray(data.responseTo) ? data.responseTo[0] : data.responseTo
+          const refSlug = Array.isArray(data.responseTo) ? data.responseTo[0] : data.responseTo
+          const ref = await payload.find({ collection: 'posts', where: { slug: { equals: refSlug } }, limit: 1 })
+          if (ref.docs[0]) postData.responseTo = ref.docs[0].id
         }
         if (data.followUpTo) {
-          postData.followUpTo = Array.isArray(data.followUpTo) ? data.followUpTo[0] : data.followUpTo
+          const refSlug = Array.isArray(data.followUpTo) ? data.followUpTo[0] : data.followUpTo
+          const ref = await payload.find({ collection: 'posts', where: { slug: { equals: refSlug } }, limit: 1 })
+          if (ref.docs[0]) postData.followUpTo = ref.docs[0].id
         }
 
         await payload.create({
