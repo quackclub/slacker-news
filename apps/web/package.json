@@ -12,8 +12,8 @@
   "dependencies": {
     "@astrojs/check": "^0.9.9",
     "@astrojs/mdx": "^5.0.4",
-    "@astrojs/node": "^10.1.1",
     "@astrojs/rss": "^4.0.18",
+    "@astrojs/vercel": "^10.0.8",
     "@chenglou/pretext": "^0.0.7",
     "astro": "^6.1.9",
     "rehype-katex": "^7.0.1",

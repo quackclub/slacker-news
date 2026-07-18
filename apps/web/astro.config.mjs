@@ -1,6 +1,6 @@
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
-import node from "@astrojs/node";
+import vercel from "@astrojs/vercel";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import { legacyRedirects } from "./src/data/legacy-redirects.mjs";
@@ -8,8 +8,7 @@ import { legacyRedirects } from "./src/data/legacy-redirects.mjs";
 export default defineConfig({
     site: "https://news.hackclub.com",
     output: "server",
-    adapter: node({ mode: "standalone" }),
-    server: { port: 4000 },
+    adapter: vercel(),
     markdown: {
         remarkPlugins: [remarkMath],
         rehypePlugins: [rehypeKatex],
