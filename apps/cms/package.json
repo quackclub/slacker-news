@@ -4,6 +4,7 @@
   "description": "Website template for Payload",
   "license": "MIT",
   "type": "module",
+
   "scripts": {
     "build": "payload generate:importmap && next build",
     "postbuild": "next-sitemap --config next-sitemap.config.cjs",
