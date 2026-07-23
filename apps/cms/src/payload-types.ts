@@ -250,10 +250,9 @@ export interface Post {
     image?: (number | null) | Media;
     description?: string | null;
   };
-  /**
-   * Choose where this post appears on the homepage.
-   */
-  categories: (number | Category)[];
+  categories?: (number | Category)[] | null;
+  responseTo?: (number | null) | Post;
+  followUpTo?: (number | null) | Post;
   /**
    * If enabled, readers will need to sign in to view this post on the Astro frontend.
    */
@@ -268,8 +267,6 @@ export interface Post {
         id?: string | null;
       }[]
     | null;
-  responseTo?: (number | null) | Post;
-  followUpTo?: (number | null) | Post;
   /**
    * When enabled, the slug will auto-generate from the title field on save and autosave.
    */
@@ -1216,6 +1213,8 @@ export interface PostsSelect<T extends boolean = true> {
         description?: T;
       };
   categories?: T;
+  responseTo?: T;
+  followUpTo?: T;
   loginRequired?: T;
   publishedAt?: T;
   authors?:
@@ -1224,8 +1223,6 @@ export interface PostsSelect<T extends boolean = true> {
         name?: T;
         id?: T;
       };
-  responseTo?: T;
-  followUpTo?: T;
   generateSlug?: T;
   slug?: T;
   updatedAt?: T;

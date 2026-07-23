@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "buildCommand": "payload generate:importmap && next build",
+  "buildCommand": "payload migrate && payload generate:importmap && next build",
   "installCommand": "bun install"
 }
