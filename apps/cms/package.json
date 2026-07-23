@@ -7,7 +7,7 @@
 
   "scripts": {
     "build": "payload generate:importmap && next build",
-    "postbuild": "next-sitemap --config next-sitemap.config.cjs",
+    "postbuild": "echo '{\"type\":\"commonjs\"}' > .next/server/package.json && next-sitemap --config next-sitemap.config.cjs",
     "dev": "next dev --webpack",
     "dev:prod": "rm -rf .next && bun run build && bun run start",
     "generate:importmap": "payload generate:importmap",
