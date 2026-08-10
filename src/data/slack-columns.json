@@ -20,5 +20,16 @@
     "homepageLimit": 12,
     "showMetadata": false,
     "limit": 12
+  },
+  {
+    "channel": "new-opinions",
+    "channelId": "C0BQ3M5QRQQ",
+    "title": "Protected Opinions (to be merged with Opinions)",
+    "homepage": true,
+    "homepageMessagesPerRow": 4,
+    "homepageLimit": 12,
+    "showMetadata": false,
+    "authRequired": true,
+    "limit": 12
   }
 ]
