@@ -1,0 +1,32 @@
+---
+import SlackRichText from "./SlackRichText.astro";
+import type { ColumnFeedItem } from "../lib/column-feed";
+import { firstMetadataValue } from "../lib/column-feed";
+import { truncateWords } from "../lib/content";
+
+interface Props {
+  item: ColumnFeedItem;
+  variant: "opinion" | "story";
+}
+
+const { item, variant } = Astro.props;
+const isSlack = item.kind === "slack";
+const title = isSlack ? firstMetadataValue(item.message.metadata) ?? item.column.title : item.post.title;
+const href = isSlack
+  ? `/slack/${encodeURIComponent(item.column.column)}/${encodeURIComponent(item.message.slackTs)}/`
+  : item.post.url;
+const excerpt = isSlack ? item.message.text : item.post.excerpt;
+const truncatedExcerpt = truncateWords(excerpt, 18);
+---
+
+<a href={href} class:list={[variant === "opinion" ? "opinion-item" : ["front-block", "story-block"]]}>
+  <h3 class:list={[variant === "opinion" ? "opinion-title" : "story-block-title"]}>{title}</h3>
+  {isSlack ? (
+    <p class:list={[variant === "opinion" ? "opinion-excerpt" : "story-block-excerpt", "slack-feed-excerpt"]}>
+      <SlackRichText text={truncatedExcerpt} />
+    </p>
+  ) : (
+    <p class:list={[variant === "opinion" ? "opinion-excerpt" : "story-block-excerpt"]}>{truncatedExcerpt}</p>
+  )}
+  <span class="reading-time">{isSlack ? item.readingTime : item.post.readingTime} min read</span>
+</a>

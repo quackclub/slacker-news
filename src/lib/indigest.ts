@@ -1,8 +1,8 @@
 import columnConfig from "../data/slack-columns.json";
 
 export type SlackColumnConfig = {
-  /** Stable URL segment, e.g. "happenings". */
-  channel: string;
+  /** Traditional site column/category or standalone Slack section key. */
+  column: string;
   /** Slack channel ID used by Indigest (usually starts with C). */
   channelId?: string;
   title: string;
@@ -51,7 +51,7 @@ export function getSlackColumns(): SlackColumnConfig[] {
 }
 
 export function getSlackColumn(channel: string): SlackColumnConfig | undefined {
-  return configuredColumns.find((column) => column.channel === channel);
+  return configuredColumns.find((column) => column.column === channel);
 }
 
 export async function getIndigestMessages(

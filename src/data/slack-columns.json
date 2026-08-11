@@ -1,6 +1,6 @@
 [
   {
-    "channel": "classifieds",
+    "column": "classifieds",
     "channelId": "C0AU38ZDLE5",
     "title": "Classifieds",
     "subtitle": "from #hc-opportunities",
@@ -11,7 +11,7 @@
     "limit": 12
   },
   {
-    "channel": "ysws",
+    "column": "ysws",
     "channelId": "C0710J7F4U9",
     "title": "Active YSWS",
     "subtitle": "from #ysws",
@@ -22,9 +22,9 @@
     "limit": 12
   },
   {
-    "channel": "new-opinions",
+    "column": "opinion",
     "channelId": "C0BQ3M5QRQQ",
-    "title": "Protected Opinions (to be merged with Opinions)",
+    "title": "Protected Opinions",
     "homepage": true,
     "homepageMessagesPerRow": 4,
     "homepageLimit": 12,
