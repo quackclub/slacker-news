@@ -107,14 +107,18 @@ export async function getIndigestMessage(channel: string, slackTs: string): Prom
   return ("data" in payload ? payload.data : payload) as IndigestMessage | undefined;
 }
 
+export function slackLinkFromMessageId(channelId: string, slackTs: string) {
+  return `https://hackclub.slack.com/archives/${channelId}/p${slackTs.replace('.', '')}`
+}
+
 export async function getIndigestMetadataSchema(channel: string): Promise<IndigestMetadataSchema | undefined> {
   try {
     const apiKey = import.meta.env.INDIGEST_API_KEY;
     if (!apiKey) return undefined;
 
     const apiURL = import.meta.env.INDIGEST_API_URL ?? "https://indigest.matmanna.dev";
-    const response = await fetch(`${apiURL}/api/channels/${encodeURIComponent(channel)}`, {
-      headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" }
+    const response = await fetch(`${apiURL} /api/channels / ${encodeURIComponent(channel)} `, {
+      headers: { Authorization: `Bearer ${apiKey} `, Accept: "application/json" }
     });
     if (!response.ok) return undefined;
 
@@ -158,7 +162,28 @@ export async function getSlackColumnData(channel: string, limitOverride?: number
       metadataSchema
     };
   } catch (error) {
-    console.error(`Unable to load Indigest channel ${channel}`, error);
+    console.error(`Unable to load Indigest channel ${channel} `, error);
     return { ...config, messages: [] };
   }
+}
+
+
+export function firstMetadataValue(metadata: IndigestMessage["metadata"]): string | undefined {
+  let parsed: Record<string, unknown> | undefined;
+
+  if (typeof metadata === "string") {
+    try {
+      const value = JSON.parse(metadata);
+      if (value && typeof value === "object" && !Array.isArray(value)) parsed = value;
+    } catch {
+      return undefined;
+    }
+  } else if (metadata && typeof metadata === "object") {
+    parsed = metadata;
+  }
+
+  const value = parsed ? Object.values(parsed)[0] : undefined;
+  if (typeof value === "string" && value.trim()) return value.trim();
+  if (value !== undefined && value !== null) return String(value);
+  return undefined;
 }

@@ -1,10 +1,12 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
 import { getSiteConfig } from "../lib/content";
 import ColumnFeedCard from "../components/ColumnFeedCard.astro";
 import { getColumnFeedItems } from "../lib/column-feed";
 
 export const prerender = false;
+
 
 const site = await getSiteConfig();
 const opinionItems = await getColumnFeedItems("opinion", Boolean(Astro.locals.user));
@@ -15,8 +17,10 @@ const opinionItems = await getColumnFeedItems("opinion", Boolean(Astro.locals.us
     <div class="section-label">OPINION</div>
     <hr class="section-rule" />
     <div class="archive-list">
+
       {opinionItems.map((item) => (
         <ColumnFeedCard item={item} variant="story" />
+
       ))}
     </div>
   </div>

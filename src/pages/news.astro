@@ -1,10 +1,12 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+
 import { getSiteConfig } from "../lib/content";
 import ColumnFeedCard from "../components/ColumnFeedCard.astro";
 import { getColumnFeedItems } from "../lib/column-feed";
 
 export const prerender = false;
+
 
 const site = await getSiteConfig();
 const newsItems = await getColumnFeedItems("news", Boolean(Astro.locals.user));
