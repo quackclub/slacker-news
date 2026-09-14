@@ -1,0 +1,79 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import AuthorList from "../../../components/AuthorList.astro";
+import { getSiteConfig } from "../../../lib/content";
+import { getDataReport, getDataReports } from "../../../lib/data-reports";
+import { render } from "astro:content";
+
+// Reports draw live charts, so they are rendered per request like the
+// dashboards rather than frozen at build time.
+export const prerender = false;
+
+const site = await getSiteConfig();
+const slug = Array.isArray(Astro.params.slug) ? Astro.params.slug.join("/") : Astro.params.slug;
+const report = slug ? await getDataReport(slug) : undefined;
+
+if (!report) {
+  return new Response(null, { status: 404, statusText: "Report not found" });
+}
+
+const { Content } = await render(report.entry);
+const others = (await getDataReports()).filter((entry) => entry.slug !== report.slug).slice(0, 3);
+---
+
+<BaseLayout
+  title={report.title}
+  description={report.excerpt}
+  siteTitle={site.title}
+  siteDescription={site.description}
+  openGraphType="article"
+  articlePublishedTime={report.date.toISOString()}
+  accentColor="#2a6a9b"
+>
+  <article class="data-page data-article">
+    <header class="data-masthead">
+      <h1 class="data-headline">{report.title}</h1>
+      <p class="data-standfirst">{report.excerpt}</p>
+      <p class="data-meta">
+        {report.author && <span>By <AuthorList authors={report.author} /></span>}
+        <span>{report.dateLabel}</span>
+        <span>{report.readingTime} min read</span>
+        {report.dashboard && (
+          <span><a href={`/data/${report.dashboard}/`}>Open the dashboard</a></span>
+        )}
+      </p>
+    </header>
+
+    <hr class="section-rule" />
+
+    <div class="data-article-body">
+      <Content />
+    </div>
+
+    {others.length > 0 && (
+      <section>
+        <div class="section-kicker">
+          <span class="section-label">More reports</span>
+        </div>
+        <div class="archive-list">
+          {others.map((entry) => (
+            <a href={entry.url} class="front-block story-block">
+              <header class="story-card-header">
+                <h3 class="story-block-title">{entry.title}</h3>
+                <time class="story-card-date" datetime={entry.date.toISOString()}>{entry.dateLabel}</time>
+              </header>
+              <p class="story-block-excerpt">{entry.excerpt}</p>
+              <span class="reading-time">{entry.readingTime} min read</span>
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <p class="data-meta"><a href="/data/">&larr; Back to the data desk</a></p>
+  </article>
+
+  <script>
+    import "../../../lib/charts/mount";
+  </script>
+</BaseLayout>

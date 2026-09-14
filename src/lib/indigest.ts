@@ -136,6 +136,63 @@ export async function getIndigestMessages(
   });
 }
 
+// The listing endpoint caps a page at 200 rows no matter what `limit` asks for,
+// so a whole channel has to be walked page by page.
+const INDIGEST_PAGE_SIZE = 200;
+
+export async function getAllIndigestMessages(
+  channel: string,
+  maxPages = 50,
+): Promise<IndigestMessage[]> {
+  const apiKey = import.meta.env.INDIGEST_API_KEY;
+  if (!apiKey) {
+    console.warn("INDIGEST_API_KEY is not configured");
+    return [];
+  }
+
+  const apiURL =
+    import.meta.env.INDIGEST_API_URL ?? "https://indigest.matmanna.dev";
+
+  return getCached(`all:${apiURL}:${channel}`, async () => {
+    // Rows can be inserted while the walk is in progress — the listing is
+    // newest-first, so an insert shifts everything down a slot and the next
+    // page repeats a message. Key by Slack timestamp to drop those.
+    const collected = new Map<string, IndigestMessage>();
+
+    for (let page = 1; page <= maxPages; page++) {
+      const url = new URL("/api/messages", apiURL);
+      url.searchParams.set("channel", channel);
+      url.searchParams.set("limit", String(INDIGEST_PAGE_SIZE));
+      url.searchParams.set("page", String(page));
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Indigest returned ${response.status} for channel ${channel} page ${page}`,
+        );
+      }
+
+      const payload = (await response.json()) as {
+        data?: IndigestMessage[];
+        pagination?: { page?: number; total_pages?: number };
+      };
+      const batch = payload.data ?? [];
+      for (const message of batch) collected.set(message.slackTs, message);
+
+      const totalPages = payload.pagination?.total_pages ?? 1;
+      if (batch.length === 0 || page >= totalPages) break;
+    }
+
+    return [...collected.values()];
+  });
+}
+
 export async function getIndigestMessage(
   channel: string,
   slackTs: string,

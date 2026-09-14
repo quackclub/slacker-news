@@ -1,0 +1,193 @@
+---
+import ChartFigure from "./ChartFigure.astro";
+import { getPrometheusDataset } from "../../lib/prometheus";
+import {
+  byActor,
+  byChannel,
+  dailySeries,
+  rollingAverage,
+  threadSizeBuckets,
+  weekdayHourMatrix,
+  UNKNOWN_CHANNEL,
+  WEEKDAYS
+} from "../../lib/prometheus-aggregate";
+import { formatInteger } from "../../lib/charts/format";
+import { DELETION_COLORS, OTHER_COLOR, SEQUENTIAL_RAMP, SERIES_COLORS } from "../../lib/charts/palette";
+import type { ChartSpec } from "../../lib/charts/spec";
+
+interface Props {
+  /** Which view of the deletion log to draw. */
+  chart: "daily" | "channels" | "moderators" | "share" | "threads" | "clock";
+  title?: string;
+  note?: string;
+  limit?: number;
+  wide?: boolean;
+  height?: number;
+}
+
+const { chart, title, note, limit = 10, wide = true, height } = Astro.props;
+
+const dataset = await getPrometheusDataset();
+const days = dailySeries(dataset.events);
+const channelLabel = (id: string) =>
+  id === UNKNOWN_CHANNEL ? "Channel not named" : `#${dataset.channelNames[id] ?? id}`;
+
+const kindLegend = [
+  { key: "message", label: "Messages", color: DELETION_COLORS.message },
+  { key: "thread", label: "Threads", color: DELETION_COLORS.thread }
+];
+
+const kindSegments = (row: { messages: number; threads: number }) => [
+  { key: "message", label: "Messages", color: DELETION_COLORS.message, value: row.messages },
+  { key: "thread", label: "Threads", color: DELETION_COLORS.thread, value: row.threads }
+];
+
+function buildSpec(): { spec: ChartSpec; title: string; note: string; height?: number } {
+  switch (chart) {
+    case "channels": {
+      const rows = byChannel(dataset.events).slice(0, limit);
+      return {
+        title: "Channels with the most deletions",
+        note: "Each bar splits into single messages and whole threads.",
+        spec: {
+          type: "bars",
+          unit: "deletions",
+          valueLabel: "Deletions",
+          legend: kindLegend,
+          rows: rows.map((row) => ({
+            key: row.key,
+            label: channelLabel(row.key),
+            href: row.key.startsWith("C") ? `https://hackclub.slack.com/archives/${row.key}` : undefined,
+            segments: kindSegments(row)
+          }))
+        }
+      };
+    }
+
+    case "moderators": {
+      const rows = byActor(dataset.events).slice(0, limit);
+      return {
+        title: "Moderators named in the log",
+        note: `Only the ${formatInteger(dataset.events.length - dataset.unattributed)} log lines that credit somebody.`,
+        spec: {
+          type: "bars",
+          unit: "deletions",
+          valueLabel: "Deletions",
+          legend: kindLegend,
+          rows: rows.map((row) => ({
+            key: row.key,
+            label: dataset.actorNames[row.key] ?? row.key,
+            segments: kindSegments(row)
+          }))
+        }
+      };
+    }
+
+    case "share": {
+      const channels = byChannel(dataset.events);
+      const leaders = channels.slice(0, 5);
+      const tail = channels.slice(5).reduce((sum, row) => sum + row.total, 0);
+      return {
+        title: "Share of deletions by channel",
+        note: "The five busiest channels, with everything else folded into one slice.",
+        spec: {
+          type: "donut",
+          unit: "deletions",
+          centerValue: formatInteger(dataset.events.length),
+          centerLabel: "deletions",
+          slices: [
+            ...leaders.map((row, index) => ({
+              key: row.key,
+              label: channelLabel(row.key),
+              value: row.total,
+              color: SERIES_COLORS[index]
+            })),
+            ...(tail > 0
+              ? [{ key: "other", label: "Every other channel", value: tail, color: OTHER_COLOR }]
+              : [])
+          ]
+        }
+      };
+    }
+
+    case "threads":
+      return {
+        title: "How big were the deleted threads?",
+        note: "Thread deletions that report a length, bucketed by how many messages went with them.",
+        height: 200,
+        spec: {
+          type: "columns",
+          color: DELETION_COLORS.thread,
+          unit: "thread deletions",
+          valueLabel: "Thread deletions",
+          categoryLabel: "Messages in thread",
+          bars: threadSizeBuckets(dataset.events).map((bucket) => ({
+            key: bucket.key,
+            label: bucket.label,
+            value: bucket.count
+          }))
+        }
+      };
+
+    case "clock":
+      return {
+        title: "Deletions by weekday and hour (UTC)",
+        note: "Darker is busier. Hours are UTC, not the moderator's local time.",
+        spec: {
+          type: "heatmap",
+          unit: "deletions",
+          rowLabel: "Day",
+          columnLabel: "Hour (UTC)",
+          ramp: [...SEQUENTIAL_RAMP],
+          rows: WEEKDAYS,
+          columns: Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`),
+          values: weekdayHourMatrix(dataset.events)
+        }
+      };
+
+    case "daily":
+    default: {
+      const average = rollingAverage(days, "total", 7);
+      return {
+        title: "Deletions logged per day",
+        note: "The daily count, with a seven-day average over it.",
+        height: 260,
+        spec: {
+          type: "timeseries",
+          unit: "deletions",
+          height: 260,
+          series: [
+            {
+              key: "daily",
+              label: "Deletions logged",
+              color: DELETION_COLORS.message,
+              kind: "histogram",
+              data: days.map((day) => ({ time: day.day, value: day.total }))
+            },
+            {
+              key: "average",
+              label: "Seven-day average",
+              color: DELETION_COLORS.thread,
+              kind: "line",
+              secondary: true,
+              data: average.map((point) => ({ time: point.day, value: Number(point.value.toFixed(2)) }))
+            }
+          ]
+        }
+      };
+    }
+  }
+}
+
+const built = buildSpec();
+---
+
+<ChartFigure
+  title={title ?? built.title}
+  note={note ?? built.note}
+  height={height ?? built.height}
+  wide={wide}
+  spec={built.spec}
+  source="#prometheus-public via Indigest"
+  sourceHref="https://hackclub.slack.com/archives/C0ANGHXK0KH"
+/>

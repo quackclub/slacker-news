@@ -1,0 +1,53 @@
+---
+import { getPrometheusDataset } from "../lib/prometheus";
+import { summarize, dailySeries } from "../lib/prometheus-aggregate";
+import { getWorkspaceDataset } from "../lib/slack-workspace";
+import { getYswsDataset } from "../lib/ysws";
+import { formatCompact, formatInteger } from "../lib/charts/format";
+
+// Live figures for the front page's data column. Each source is optional: a
+// dead one costs its card a figure line, nothing more.
+const [prometheus, workspace, ysws] = await Promise.all([
+  getPrometheusDataset().catch(() => undefined),
+  getWorkspaceDataset().catch(() => undefined),
+  getYswsDataset().catch(() => undefined)
+]);
+
+const deletions = prometheus
+  ? summarize(prometheus.events, dailySeries(prometheus.events))
+  : undefined;
+const members = workspace?.figures.find((figure) => figure.key === "total_members");
+
+const cards = [
+  {
+    href: "/data/prometheus/",
+    title: "What gets deleted in the Hack Club Slack",
+    note: "Every message and thread Prometheus has logged as deleted, by channel and by moderator.",
+    figure: deletions ? `${formatInteger(deletions.total)} deletions logged` : undefined
+  },
+  {
+    href: "/data/slack/",
+    title: "The Hack Club Slack, day by day",
+    note: "Members, active users and messages posted, from the workspace analytics export.",
+    figure: members ? `${formatCompact(members.value)} members` : undefined
+  },
+  {
+    href: "/data/ships/",
+    title: "What Hack Clubbers ship",
+    note: "Projects, hours and shippers across every You Ship, We Ship program.",
+    figure: ysws?.overview.projects ? `${formatCompact(ysws.overview.projects)} projects` : undefined
+  }
+];
+---
+
+<div class="front-bottom front-bottom--3">
+  {cards.map((card) => (
+    <a href={card.href} class="front-block story-block">
+      <header class="story-card-header">
+        <h3 class="story-block-title">{card.title}</h3>
+      </header>
+      <p class="story-block-excerpt">{card.note}</p>
+      {card.figure && <span class="reading-time">{card.figure}</span>}
+    </a>
+  ))}
+</div>

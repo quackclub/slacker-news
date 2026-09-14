@@ -1,0 +1,87 @@
+---
+title: How we count deletions in the Hack Club Slack
+date: 2026-09-14
+excerpt: The moderation dashboard is built from one channel's worth of bot messages. Here is what those messages say, what they leave out, and how far the numbers can honestly be pushed.
+dashboard: prometheus
+---
+
+import PrometheusChart from "../../components/charts/PrometheusChart.astro";
+import SlackChannel from "../../components/SlackChannel.astro";
+
+Prometheus, the moderation bot in the Hack Club Slack, announces its own work. Every time a
+message or a thread is removed from a channel it watches, a line lands in
+<SlackChannel id="C0ANGHXK0KH" label="prometheus-public" />. Nothing else about the deletion is
+published: not the text that was removed, not the person who wrote it, not the reason.
+
+That is the entire source behind the moderation dashboard. This piece is about what can and
+cannot be read out of it.
+
+## Four shapes of log line
+
+The bot writes in a small number of fixed forms. Two of them name the moderator who acted —
+one for a single message, one for a whole thread, the latter reporting how many messages went
+with it. The other two are anonymous: a bare *message deleted in* or *thread deleted in*, with
+a channel and nothing more.
+
+Everything on the dashboard comes from matching those shapes. A line that matches none of them
+is treated as what it usually is — a human talking in the channel — and is excluded from every
+count rather than guessed at.
+
+## Two different things called a deletion
+
+A message deletion removes one message. A thread deletion removes a conversation, and the
+number of messages in that conversation ranges from one to several dozen. Adding the two
+together into a single "deletions" figure is fine as long as you know that is what you are
+looking at, which is why the dashboard reports both the number of deletion *events* and the
+number of *messages removed*, and why the channel bars split by type rather than stacking into
+one undifferentiated total.
+
+The distribution of thread sizes is heavily weighted toward the small end:
+
+<PrometheusChart chart="threads" wide={false} />
+
+## Deletions are concentrated, not spread
+
+The other thing the log makes obvious is that moderation is not evenly distributed across the
+Slack. A handful of channels account for most of what gets removed, and the long tail of
+channels each contribute one or two events:
+
+<PrometheusChart chart="share" wide={false} />
+
+Read that as a statement about where conversation volume and moderation attention overlap, not
+as a ranking of which channels are worst behaved. A channel with ten times the traffic will
+generate more deletions at the same rate of trouble, and the log carries no denominator — it
+records what was removed, never what was posted.
+
+## Roughly a third of the log credits nobody
+
+The anonymous forms of the log line are common. That has a specific consequence: any chart of
+who deletes what is drawn from a subset, and the subset is not random — it is whichever
+deletions happened to be logged in the attributed form.
+
+<PrometheusChart chart="moderators" wide={false} />
+
+The dashboard keeps unattributed deletions in every total, because they really happened, and
+keeps them out of the moderator chart, because attributing them would be inventing data. The
+figure for what share of the log names anybody is on the dashboard for exactly this reason.
+
+## What the timeline does and does not show
+
+Deletions arrive in bursts. A single spam wave, or one moderator working through a backlog,
+can put more events on one day than the previous fortnight combined — and at least one such
+burst in this log was annotated by hand in the channel as exactly that. A daily count is
+therefore a noisy series, and the seven-day average is the line worth reading:
+
+<PrometheusChart chart="daily" />
+
+## The limits, stated plainly
+
+- The log covers the channels Prometheus watches. Silence about a channel is not evidence that
+  nothing was deleted there.
+- Deletions carried out without the bot seeing them do not appear at all.
+- Days and hours are bucketed in UTC, which is nobody's working day in particular.
+- There is no denominator. Nothing here supports a claim about the *rate* of deletion, only the
+  count.
+
+The full, filterable version — by channel, by moderator, by date, by type — is on the
+[moderation dashboard](/data/prometheus/).

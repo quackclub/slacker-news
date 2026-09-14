@@ -3,9 +3,11 @@ import { getPosts } from "../lib/content";
 import { getSlackColumns, getIndigestMessages } from "../lib/indigest";
 import {
   buildSearchIndex,
+  dataReportToDocument,
   slackMessageToDocument,
   type SearchDocument,
 } from "../lib/search";
+import { getDataReports } from "../lib/data-reports";
 
 export const GET: APIRoute = async ({ locals }) => {
   const posts = await getPosts();
@@ -34,6 +36,20 @@ export const GET: APIRoute = async ({ locals }) => {
         }
       }),
   );
+
+  for (const report of await getDataReports()) {
+    slackDocs.push(
+      dataReportToDocument({
+        url: report.url,
+        title: report.title,
+        excerpt: report.excerpt,
+        readingTime: report.readingTime,
+        date: report.date,
+        author: report.author,
+        body: report.entry.body ?? "",
+      }),
+    );
+  }
 
   const index = buildSearchIndex(posts, slackDocs);
 

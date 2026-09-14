@@ -37,8 +37,23 @@ const changelogs = defineCollection({
   }),
 });
 
+// Data reports are markdown articles written around charts: the same chart
+// components the dashboards use, embedded in prose.
+const dataReports = defineCollection({
+  loader: glob({ pattern: "**/*.mdx", base: "./src/content/data" }),
+  schema: z.object({
+    title: z.string(),
+    date: z.coerce.date(),
+    excerpt: z.string(),
+    author: z.union([z.string(), z.array(z.string())]).optional(),
+    /** Slug of the dashboard this report draws on, if there is one. */
+    dashboard: z.string().optional(),
+  }),
+});
+
 export const collections = {
   posts,
   pages,
   changelogs,
+  dataReports,
 };

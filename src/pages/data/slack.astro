@@ -1,0 +1,350 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChartFigure from "../../components/charts/ChartFigure.astro";
+import HeroFigure from "../../components/charts/HeroFigure.astro";
+import StatTile from "../../components/charts/StatTile.astro";
+import { getSiteConfig } from "../../lib/content";
+import { getWorkspaceDataset } from "../../lib/slack-workspace";
+import { formatCompact, formatInteger, formatFullDate, formatTimestamp } from "../../lib/charts/format";
+import { SERIES_COLORS } from "../../lib/charts/palette";
+
+export const prerender = false;
+
+const site = await getSiteConfig();
+const workspace = await getWorkspaceDataset().catch(() => undefined);
+
+const days = workspace?.days ?? [];
+const latest = days[days.length - 1];
+const members = workspace?.figures.find((figure) => figure.key === "total_members");
+const claimed = workspace?.figures.find((figure) => figure.key === "total_claimed_members");
+const monthlyActive = workspace?.figures.find((figure) => figure.key === "monthly_active_users");
+
+const clientData = {
+  days,
+  colors: {
+    members: SERIES_COLORS[0],
+    claimed: SERIES_COLORS[2],
+    daily: SERIES_COLORS[0],
+    average: SERIES_COLORS[1],
+    writers: SERIES_COLORS[1],
+    readers: SERIES_COLORS[3],
+    active1d: SERIES_COLORS[0],
+    active7d: SERIES_COLORS[3],
+    active28d: SERIES_COLORS[4],
+    channels: SERIES_COLORS[0],
+    groups: SERIES_COLORS[3],
+    dms: SERIES_COLORS[4]
+  }
+};
+
+const windowLabel =
+  days.length > 0
+    ? `${formatFullDate(days[0].date)} – ${formatFullDate(days[days.length - 1].date)}`
+    : "No days available";
+---
+
+<BaseLayout
+  title="The Hack Club Slack, day by day"
+  description="Members, claimed accounts, active users and messages posted in the Hack Club Slack, from the workspace analytics export."
+  siteTitle={site.title}
+  siteDescription={site.description}
+  accentColor="#2a6a9b"
+>
+  <div class="data-page" data-workspace-dashboard>
+    <header class="data-masthead">
+      <h1 class="data-headline">The Hack Club Slack, day by day</h1>
+      <p class="data-standfirst">
+        Slack publishes an analytics export for the workspace. It carries a short rolling window
+        — about four weeks of daily rows — plus a few headline membership figures. Everything on
+        this page is that export, unaltered.
+      </p>
+    </header>
+
+    <hr class="section-rule" />
+
+    {workspace ? (
+      <>
+        <section class="data-hero">
+          {members && (
+            <HeroFigure
+              value={formatInteger(members.value)}
+              label="people in the workspace"
+              note={
+                members.change !== undefined
+                  ? `${members.change > 0 ? "+" : ""}${formatInteger(members.change)} since the previous period`
+                  : undefined
+              }
+            />
+          )}
+          <div class="stat-row">
+            {claimed && (
+              <StatTile
+                label="Claimed accounts"
+                value={formatCompact(claimed.value)}
+                delta={claimed.changePercentage !== undefined ? `${claimed.changePercentage > 0 ? "+" : ""}${claimed.changePercentage}%` : undefined}
+                deltaLabel="vs the period before"
+                deltaDirection={claimed.changePercentage !== undefined && claimed.changePercentage < 0 ? "down" : "up"}
+              />
+            )}
+            {monthlyActive && (
+              <StatTile
+                label="Monthly active"
+                value={formatCompact(monthlyActive.value)}
+                delta={monthlyActive.changePercentage !== undefined ? `${monthlyActive.changePercentage > 0 ? "+" : ""}${monthlyActive.changePercentage}%` : undefined}
+                deltaLabel="vs the period before"
+                deltaDirection={monthlyActive.changePercentage !== undefined && monthlyActive.changePercentage < 0 ? "down" : "up"}
+              />
+            )}
+            {latest?.messages1d !== undefined && (
+              <StatTile
+                label="Messages posted"
+                value={formatCompact(latest.messages1d)}
+                note={`On ${formatFullDate(latest.date)}`}
+              />
+            )}
+            {latest?.activeUsers1d !== undefined && (
+              <StatTile
+                label="Active that day"
+                value={formatCompact(latest.activeUsers1d)}
+                note={`Of ${formatCompact(latest.totalMembers ?? members?.value ?? 0)} members`}
+              />
+            )}
+            {latest?.channels !== undefined && (
+              <StatTile label="Channels" value={formatCompact(latest.channels)} note={`On ${formatFullDate(latest.date)}`} />
+            )}
+            {latest?.writers1d !== undefined && latest?.readers1d !== undefined && (
+              <StatTile
+                label="Wrote, not just read"
+                value={`${Math.round((latest.writers1d / Math.max(latest.readers1d, 1)) * 100)}%`}
+                note="Writers as a share of readers, that day"
+              />
+            )}
+          </div>
+        </section>
+
+        <form class="data-filters" data-filters aria-label="Filter the daily charts">
+          <div class="data-filter">
+            <span class="data-filter-label" id="workspace-range-label">Date range</span>
+            <div class="data-range" role="group" aria-labelledby="workspace-range-label">
+              <button type="button" data-range="7" aria-pressed="false">7 days</button>
+              <button type="button" data-range="14" aria-pressed="false">14 days</button>
+              <button type="button" data-range="all" aria-pressed="true">Full window</button>
+            </div>
+          </div>
+          <p class="data-filter-summary" data-filter-summary aria-live="polite">
+            Showing {formatInteger(days.length)} days: {windowLabel}.
+          </p>
+        </form>
+
+        <div class="chart-grid">
+          <ChartFigure
+            figureId="workspace-messages"
+            wide
+            title="Messages posted per day"
+            note="The daily count, with a seven-day average over it. Only days inside the export's window exist — the series cannot be extended backwards."
+            height={280}
+            source="Slack analytics export"
+          />
+
+          <ChartFigure
+            figureId="workspace-active"
+            title="Active users, by window"
+            note="The same measure over one, seven and twenty-eight days. All three are counts of people, on one scale."
+            height={240}
+            source="Slack analytics export"
+          />
+
+          <ChartFigure
+            figureId="workspace-writers"
+            title="Readers and writers each day"
+            note="Everyone who read something, against everyone who posted something."
+            height={240}
+            source="Slack analytics export"
+          />
+
+          <ChartFigure
+            figureId="workspace-members"
+            title="Members and claimed accounts"
+            note="Total membership against the accounts that have actually been claimed."
+            height={240}
+            source="Slack analytics export"
+          />
+
+          <ChartFigure
+            figureId="workspace-where"
+            title="Where the messages go"
+            note="Public channels against private groups, per day. Direct messages arrive as zero in this export and are not drawn."
+            height={240}
+            source="Slack analytics export"
+          />
+        </div>
+
+        <section class="data-note">
+          <h2>How to read this</h2>
+          <ul>
+            <li>
+              The export only keeps a rolling window of daily rows — currently {formatInteger(days.length)}.
+              Nothing on this page can say anything about last year.
+            </li>
+            <li>
+              The headline membership figures above the filters come from the export's own summary
+              and are not recomputed from the daily rows, so they do not move when you change the range.
+            </li>
+            <li>
+              "Active" and "writers" are Slack's own definitions, counted per day in the workspace's
+              reporting timezone rather than UTC.
+            </li>
+            <li>Direct-message counts arrive as zero in this export and are left out rather than drawn as a real zero.</li>
+          </ul>
+        </section>
+
+        <script is:inline type="application/json" id="workspace-data" set:html={JSON.stringify(clientData).replaceAll("<", "\\u003c")} />
+      </>
+    ) : (
+      <p class="data-note">The workspace analytics export could not be reached. Try again shortly.</p>
+    )}
+  </div>
+
+  <script>
+    import { renderChart } from "../../lib/charts/render";
+    import type { ChartSpec } from "../../lib/charts/spec";
+    import type { WorkspaceDay } from "../../lib/slack-workspace";
+    import { formatInteger, formatFullDate } from "../../lib/charts/format";
+
+    type ClientData = { days: WorkspaceDay[]; colors: Record<string, string> };
+
+    function movingAverage(values: Array<{ time: string; value: number }>, window: number) {
+      let sum = 0;
+      return values.map((point, index) => {
+        sum += point.value;
+        if (index >= window) sum -= values[index - window].value;
+        return {
+          time: point.time,
+          value: Number((sum / Math.min(index + 1, window)).toFixed(1))
+        };
+      });
+    }
+
+    function initialise() {
+      const root = document.querySelector<HTMLElement>("[data-workspace-dashboard]");
+      if (!root || root.dataset.ready === "true") return;
+
+      const source = root.querySelector<HTMLScriptElement>("#workspace-data");
+      if (!source?.textContent) return;
+
+      const data = JSON.parse(source.textContent) as ClientData;
+      root.dataset.ready = "true";
+
+      const rangeButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-range]"));
+      const summaryLine = root.querySelector<HTMLElement>("[data-filter-summary]");
+
+      function draw(id: string, spec: ChartSpec) {
+        const host = document.getElementById(id);
+        if (host) renderChart(host, spec);
+      }
+
+      function points(days: WorkspaceDay[], field: keyof WorkspaceDay) {
+        return days
+          .map((day) => ({ time: day.date, value: day[field] }))
+          .filter((point): point is { time: string; value: number } => typeof point.value === "number");
+      }
+
+      function render() {
+        const active = rangeButtons.find((button) => button.getAttribute("aria-pressed") === "true");
+        const range = active?.dataset.range ?? "all";
+        const days =
+          range === "all" ? data.days : data.days.slice(Math.max(data.days.length - Number(range), 0));
+
+        if (summaryLine && days.length > 0) {
+          summaryLine.textContent = `Showing ${formatInteger(days.length)} days: ${formatFullDate(days[0].date)} – ${formatFullDate(days[days.length - 1].date)}.`;
+        }
+
+        const messages = points(days, "messages1d");
+        // Averaged over the whole export window, then cut to the visible days,
+        // so a short range does not turn the seven-day average into a two-day
+        // one.
+        const firstDay = days[0]?.date ?? "";
+        const lastDay = days[days.length - 1]?.date ?? "";
+        const average = movingAverage(points(data.days, "messages1d"), 7).filter(
+          (point) => point.time >= firstDay && point.time <= lastDay
+        );
+        draw("workspace-messages", {
+          type: "timeseries",
+          unit: "messages",
+          height: 280,
+          series: [
+            {
+              key: "messages",
+              label: "Messages posted",
+              color: data.colors.daily,
+              kind: "histogram",
+              data: messages
+            },
+            {
+              key: "average",
+              label: "Seven-day average",
+              color: data.colors.average,
+              kind: "line",
+              secondary: true,
+              data: average
+            }
+          ]
+        });
+
+        draw("workspace-active", {
+          type: "timeseries",
+          unit: "people",
+          height: 240,
+          series: [
+            { key: "a1", label: "Active in a day", color: data.colors.active1d, kind: "line", data: points(days, "activeUsers1d") },
+            { key: "a7", label: "Active in seven days", color: data.colors.active7d, kind: "line", data: points(days, "activeUsers7d") },
+            { key: "a28", label: "Active in 28 days", color: data.colors.active28d, kind: "line", data: points(days, "activeUsers28d") }
+          ]
+        });
+
+        draw("workspace-writers", {
+          type: "timeseries",
+          unit: "people",
+          height: 240,
+          series: [
+            { key: "readers", label: "Read something", color: data.colors.readers, kind: "line", data: points(days, "readers1d") },
+            { key: "writers", label: "Posted something", color: data.colors.writers, kind: "line", data: points(days, "writers1d") }
+          ]
+        });
+
+        draw("workspace-members", {
+          type: "timeseries",
+          unit: "people",
+          height: 240,
+          series: [
+            { key: "members", label: "Members", color: data.colors.members, kind: "line", data: points(days, "totalMembers") },
+            { key: "claimed", label: "Claimed accounts", color: data.colors.claimed, kind: "line", data: points(days, "claimedMembers") }
+          ]
+        });
+
+        // Two series of the same measure on one scale — never a second axis.
+        draw("workspace-where", {
+          type: "timeseries",
+          unit: "messages",
+          height: 240,
+          series: [
+            { key: "channels", label: "Public channels", color: data.colors.channels, kind: "line", data: points(days, "channelMessages1d") },
+            { key: "groups", label: "Private groups", color: data.colors.groups, kind: "line", data: points(days, "groupMessages1d") }
+          ]
+        });
+      }
+
+      rangeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          rangeButtons.forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+          render();
+        });
+      });
+
+      render();
+    }
+
+    initialise();
+    document.addEventListener("astro:page-load", initialise);
+  </script>
+</BaseLayout>

@@ -22,6 +22,7 @@
     "@chenglou/pretext": "^0.0.7",
     "astro": "^6.4.8",
     "better-auth": "^1.6.26",
+    "lightweight-charts": "^5.2.1",
     "rehype-katex": "^7.0.1",
     "remark-math": "^6.0.0"
   },

@@ -1,0 +1,385 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChartFigure from "../../components/charts/ChartFigure.astro";
+import HeroFigure from "../../components/charts/HeroFigure.astro";
+import StatTile from "../../components/charts/StatTile.astro";
+import { getSiteConfig } from "../../lib/content";
+import { getYswsDataset } from "../../lib/ysws";
+import { formatCompact, formatInteger, formatMonthLabel, formatTimestamp } from "../../lib/charts/format";
+import { SERIES_COLORS } from "../../lib/charts/palette";
+
+export const prerender = false;
+
+const site = await getSiteConfig();
+const ysws = await getYswsDataset().catch(() => undefined);
+
+const months = ysws?.months ?? [];
+const latestComplete = months[months.length - 2];
+const previous = months[months.length - 3];
+
+const monthDelta =
+  latestComplete && previous && previous.projects > 0
+    ? Math.round(((latestComplete.projects - previous.projects) / previous.projects) * 100)
+    : undefined;
+
+const clientData = {
+  months,
+  programs: ysws?.programs.slice(0, 40) ?? [],
+  countries: ysws?.countries.slice(0, 40) ?? [],
+  hoursPerShipper: ysws?.hoursPerShipper ?? [],
+  submissionsPerShipper: ysws?.submissionsPerShipper ?? [],
+  colors: {
+    primary: SERIES_COLORS[0],
+    average: SERIES_COLORS[1],
+    secondary: SERIES_COLORS[3]
+  }
+};
+---
+
+<BaseLayout
+  title="What Hack Clubbers ship"
+  description="Projects, hours and shippers across every You Ship, We Ship program — by month, by program and by country."
+  siteTitle={site.title}
+  siteDescription={site.description}
+  accentColor="#96700c"
+>
+  <div class="data-page" data-ships-dashboard>
+    <header class="data-masthead">
+      <h1 class="data-headline">What Hack Clubbers ship</h1>
+      <p class="data-standfirst">
+        Every You Ship, We Ship program asks for the same thing: build something, log the hours,
+        submit it. This is the record of what came back, across every program Otter tracks.
+      </p>
+    </header>
+
+    <hr class="section-rule" />
+
+    {ysws ? (
+      <>
+        <section class="data-hero">
+          <HeroFigure
+            value={formatInteger(ysws.overview.projects ?? 0)}
+            label="projects shipped"
+            note={
+              ysws.overview.programs
+                ? `Across ${formatInteger(ysws.overview.programs)} programs`
+                : undefined
+            }
+          />
+          <div class="stat-row">
+            {ysws.overview.hours !== undefined && (
+              <StatTile label="Hours logged" value={formatCompact(ysws.overview.hours)} />
+            )}
+            {ysws.overview.shippers !== undefined && (
+              <StatTile label="Shippers" value={formatCompact(ysws.overview.shippers)} />
+            )}
+            {ysws.overview.countries !== undefined && (
+              <StatTile label="Countries" value={formatInteger(ysws.overview.countries)} />
+            )}
+            {latestComplete && (
+              <StatTile
+                label={`${formatMonthLabel(latestComplete.period)} ships`}
+                value={formatInteger(latestComplete.projects)}
+                delta={monthDelta !== undefined ? `${monthDelta > 0 ? "+" : ""}${monthDelta}%` : undefined}
+                deltaLabel="vs the month before"
+                deltaDirection={monthDelta !== undefined && monthDelta < 0 ? "down" : "up"}
+              />
+            )}
+            {ysws.overview.projects && ysws.overview.shippers ? (
+              <StatTile
+                label="Projects per shipper"
+                value={(ysws.overview.projects / ysws.overview.shippers).toFixed(1)}
+                note="Mean across everyone who shipped"
+              />
+            ) : null}
+            {ysws.overview.hours && ysws.overview.projects ? (
+              <StatTile
+                label="Hours per project"
+                value={(ysws.overview.hours / ysws.overview.projects).toFixed(1)}
+                note="Mean across every project"
+              />
+            ) : null}
+          </div>
+        </section>
+
+        <form class="data-filters" data-filters aria-label="Choose the measure">
+          <div class="data-filter">
+            <span class="data-filter-label" id="ships-metric-label">Measure</span>
+            <div class="data-range" role="group" aria-labelledby="ships-metric-label">
+              <button type="button" data-metric="projects" aria-pressed="true">Projects</button>
+              <button type="button" data-metric="hours" aria-pressed="false">Hours</button>
+            </div>
+          </div>
+          <label class="data-filter">
+            <span class="data-filter-label">Rows</span>
+            <select data-top>
+              <option value="10">Top 10</option>
+              <option value="20">Top 20</option>
+              <option value="40">Top 40</option>
+            </select>
+          </label>
+          <p class="data-filter-summary" data-filter-summary aria-live="polite">
+            Showing projects shipped.
+          </p>
+        </form>
+
+        <div class="chart-grid">
+          <ChartFigure
+            figureId="ships-months"
+            wide
+            title="Shipped per month"
+            note="The month's total, with a three-month average over it. The final point is the month in progress and will keep rising."
+            height={300}
+            source="Otter"
+          />
+
+          <ChartFigure
+            figureId="ships-programs"
+            title="The biggest programs"
+            note="Every program Otter tracks, ranked."
+            source="Otter"
+          />
+
+          <ChartFigure
+            figureId="ships-countries"
+            title="Where shippers are"
+            note="Country as recorded on the submission."
+            source="Otter"
+          />
+        </div>
+
+        <section>
+          <div class="section-kicker">
+            <span class="section-label">Shippers</span>
+            <span class="section-kicker-note">counts of people — the measure switch above does not apply</span>
+          </div>
+          <div class="chart-grid">
+            <ChartFigure
+              figureId="ships-hours-dist"
+              title="Hours logged per shipper"
+              note="How many people fall in each band of total hours."
+              height={220}
+              source="Otter"
+            />
+            <ChartFigure
+              figureId="ships-submissions-dist"
+              title="Submissions per shipper"
+              note="How many people shipped once, twice, or kept going."
+              height={220}
+              source="Otter"
+            />
+          </div>
+        </section>
+
+        <section class="data-note">
+          <h2>How to read this</h2>
+          <ul>
+            <li>
+              A "project" is one accepted submission. Somebody who shipped four things counts four
+              times in the project totals and once in the shipper totals.
+            </li>
+            <li>
+              Hours are self-reported by the shipper. They are useful for comparing scale between
+              programs and useless as a precise measure of effort.
+            </li>
+            <li>
+              The current month is always incomplete. The month-on-month figure above compares the
+              last two <em>finished</em> months for that reason.
+            </li>
+            <li>
+              Countries come from the submission record, and a large share of submissions carry no
+              country at all — the country chart is a floor, not a census.
+            </li>
+          </ul>
+        </section>
+
+        <script is:inline type="application/json" id="ships-data" set:html={JSON.stringify(clientData).replaceAll("<", "\\u003c")} />
+      </>
+    ) : (
+      <p class="data-note">The Otter stats API could not be reached. Try again shortly.</p>
+    )}
+  </div>
+
+  <script>
+    import { renderChart } from "../../lib/charts/render";
+    import type { ChartSpec } from "../../lib/charts/spec";
+
+    type Month = { period: string; projects: number; hours: number };
+    type Program = { name: string; projects: number; hours: number; shippers: number };
+    type Country = { code: string; projects: number; hours: number; shippers: number };
+    type Bucket = { bucket: string; count: number };
+
+    type ClientData = {
+      months: Month[];
+      programs: Program[];
+      countries: Country[];
+      hoursPerShipper: Bucket[];
+      submissionsPerShipper: Bucket[];
+      colors: { primary: string; average: string; secondary: string };
+    };
+
+    const REGION_NAMES =
+      typeof Intl !== "undefined" && "DisplayNames" in Intl
+        ? new Intl.DisplayNames(["en"], { type: "region" })
+        : undefined;
+
+    function countryLabel(code: string): string {
+      try {
+        return REGION_NAMES?.of(code) ?? code;
+      } catch {
+        return code;
+      }
+    }
+
+    function initialise() {
+      const root = document.querySelector<HTMLElement>("[data-ships-dashboard]");
+      if (!root || root.dataset.ready === "true") return;
+
+      const source = root.querySelector<HTMLScriptElement>("#ships-data");
+      if (!source?.textContent) return;
+
+      const data = JSON.parse(source.textContent) as ClientData;
+      root.dataset.ready = "true";
+
+      const metricButtons = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-metric]"));
+      const topSelect = root.querySelector<HTMLSelectElement>("[data-top]");
+      const summaryLine = root.querySelector<HTMLElement>("[data-filter-summary]");
+
+      function draw(id: string, spec: ChartSpec) {
+        const host = document.getElementById(id);
+        if (host) renderChart(host, spec);
+      }
+
+      function render() {
+        const metricButton = metricButtons.find((button) => button.getAttribute("aria-pressed") === "true");
+        const metric = (metricButton?.dataset.metric ?? "projects") as "projects" | "hours";
+        const unit = metric === "projects" ? "projects" : "hours";
+        const top = Number(topSelect?.value ?? 10);
+
+        if (summaryLine) {
+          summaryLine.textContent =
+            metric === "projects"
+              ? `Showing projects shipped, top ${top} rows.`
+              : `Showing hours logged, top ${top} rows.`;
+        }
+
+        const monthly = data.months.map((month) => ({
+          time: month.period.slice(0, 10),
+          value: Number(month[metric].toFixed(metric === "hours" ? 1 : 0))
+        }));
+
+        let sum = 0;
+        const average = monthly.map((point, index) => {
+          sum += point.value;
+          if (index >= 3) sum -= monthly[index - 3].value;
+          return { time: point.time, value: Number((sum / Math.min(index + 1, 3)).toFixed(1)) };
+        });
+
+        draw("ships-months", {
+          type: "timeseries",
+          unit,
+          height: 300,
+          series: [
+            {
+              key: "monthly",
+              label: metric === "projects" ? "Projects shipped" : "Hours logged",
+              color: data.colors.primary,
+              kind: "histogram",
+              data: monthly
+            },
+            {
+              key: "average",
+              label: "Three-month average",
+              color: data.colors.average,
+              kind: "line",
+              secondary: true,
+              data: average
+            }
+          ]
+        });
+
+        const programs = [...data.programs]
+          .sort((a, b) => b[metric] - a[metric])
+          .slice(0, top);
+        draw("ships-programs", {
+          type: "bars",
+          unit,
+          valueLabel: metric === "projects" ? "Projects" : "Hours",
+          rows: programs.map((program) => ({
+            key: program.name,
+            label: program.name,
+            segments: [
+              {
+                key: metric,
+                label: metric === "projects" ? "Projects" : "Hours",
+                color: data.colors.primary,
+                value: Math.round(program[metric])
+              }
+            ]
+          }))
+        });
+
+        const countries = [...data.countries]
+          .sort((a, b) => b[metric] - a[metric])
+          .slice(0, top);
+        draw("ships-countries", {
+          type: "bars",
+          unit,
+          valueLabel: metric === "projects" ? "Projects" : "Hours",
+          rows: countries.map((country) => ({
+            key: country.code,
+            label: countryLabel(country.code),
+            segments: [
+              {
+                key: metric,
+                label: metric === "projects" ? "Projects" : "Hours",
+                color: data.colors.primary,
+                value: Math.round(country[metric])
+              }
+            ]
+          }))
+        });
+
+        draw("ships-hours-dist", {
+          type: "columns",
+          color: data.colors.secondary,
+          unit: "shippers",
+          valueLabel: "Shippers",
+          categoryLabel: "Hours logged",
+          bars: data.hoursPerShipper.map((bucket) => ({
+            key: bucket.bucket,
+            label: bucket.bucket,
+            value: bucket.count
+          }))
+        });
+
+        draw("ships-submissions-dist", {
+          type: "columns",
+          color: data.colors.secondary,
+          unit: "shippers",
+          valueLabel: "Shippers",
+          categoryLabel: "Submissions",
+          bars: data.submissionsPerShipper.map((bucket) => ({
+            key: bucket.bucket,
+            label: bucket.bucket,
+            value: bucket.count
+          }))
+        });
+      }
+
+      metricButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          metricButtons.forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+          render();
+        });
+      });
+
+      topSelect?.addEventListener("change", render);
+
+      render();
+    }
+
+    initialise();
+    document.addEventListener("astro:page-load", initialise);
+  </script>
+</BaseLayout>

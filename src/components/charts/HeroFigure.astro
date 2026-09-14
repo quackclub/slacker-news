@@ -1,0 +1,16 @@
+---
+interface Props {
+  value: string;
+  label: string;
+  note?: string;
+  statKey?: string;
+}
+
+const { value, label, note, statKey } = Astro.props;
+---
+
+<div class="hero-figure" data-stat={statKey}>
+  <span class="hero-figure-value" data-stat-value>{value}</span>
+  <span class="hero-figure-label" data-stat-label>{label}</span>
+  {note && <span class="hero-figure-note" data-stat-note>{note}</span>}
+</div>

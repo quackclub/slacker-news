@@ -1,0 +1,651 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import ChartFigure from "../../components/charts/ChartFigure.astro";
+import HeroFigure from "../../components/charts/HeroFigure.astro";
+import StatTile from "../../components/charts/StatTile.astro";
+import { getSiteConfig } from "../../lib/content";
+import {
+  getPrometheusDataset,
+  PROMETHEUS_CHANNEL_ID,
+  PROMETHEUS_CHANNEL_NAME
+} from "../../lib/prometheus";
+import { byChannel, dailySeries, summarize } from "../../lib/prometheus-aggregate";
+import { formatDayRange, formatInteger, formatTimestamp } from "../../lib/charts/format";
+import { DELETION_COLORS, OTHER_COLOR, SEQUENTIAL_RAMP, SERIES_COLORS } from "../../lib/charts/palette";
+
+export const prerender = false;
+
+const site = await getSiteConfig();
+const dataset = await getPrometheusDataset();
+
+const days = dailySeries(dataset.events);
+const summary = summarize(dataset.events, days);
+const channels = byChannel(dataset.events);
+
+// Channel and moderator pickers are ordered by volume: the reader is looking
+// for the busy ones.
+const channelOptions = channels
+  .filter((row) => row.key.startsWith("C"))
+  .map((row) => ({
+    id: row.key,
+    name: dataset.channelNames[row.key] ?? row.key,
+    total: row.total
+  }));
+
+const actorOptions = Object.entries(dataset.actorNames)
+  .map(([id, name]) => ({ id, name }))
+  .sort((a, b) => a.name.localeCompare(b.name));
+
+// The share chart's colours are fixed to the five busiest channels across the
+// whole log, not to whatever is busiest inside the current filter. A reader who
+// learned that #code is blue keeps that when they change the date range.
+const featuredChannels = channels
+  .filter((row) => row.key.startsWith("C"))
+  .slice(0, 5)
+  .map((row, index) => ({
+    id: row.key,
+    color: SERIES_COLORS[index]
+  }));
+
+const clientData = {
+  events: dataset.events,
+  channelNames: dataset.channelNames,
+  actorNames: dataset.actorNames,
+  featuredChannels,
+  colors: {
+    message: DELETION_COLORS.message,
+    thread: DELETION_COLORS.thread,
+    other: OTHER_COLOR,
+    ramp: [...SEQUENTIAL_RAMP]
+  }
+};
+
+const rangeLabel =
+  dataset.firstAt && dataset.lastAt
+    ? formatDayRange(
+        new Date(dataset.firstAt).toISOString().slice(0, 10),
+        new Date(dataset.lastAt).toISOString().slice(0, 10)
+      )
+    : "No events logged yet";
+---
+
+<BaseLayout
+  title="Deletions in the Hack Club Slack"
+  description="A live dashboard of every deletion the Prometheus bot has logged in #prometheus-public: messages and threads, by channel, by moderator, over time."
+  siteTitle={site.title}
+  siteDescription={site.description}
+  accentColor="#a82a3d"
+>
+  <div class="data-page" data-prometheus-dashboard>
+    <header class="data-masthead">
+      <h1 class="data-headline">What gets deleted in the Hack Club Slack</h1>
+      <p class="data-standfirst">
+        Prometheus, the Slack's moderation bot, writes a line to
+        <a href={`https://hackclub.slack.com/archives/${PROMETHEUS_CHANNEL_ID}`} rel="noreferrer noopener" target="_blank">#{PROMETHEUS_CHANNEL_NAME}</a>
+        every time a message or a thread is removed. This dashboard reads that log and nothing
+        else — {formatInteger(dataset.events.length)} deletions across {formatInteger(summary.channels)} channels.
+      </p>
+    </header>
+
+    <hr class="section-rule" />
+
+    <form class="data-filters" data-filters aria-label="Filter deletions">
+      <div class="data-filter">
+        <span class="data-filter-label" id="range-label">Date range</span>
+        <div class="data-range" role="group" aria-labelledby="range-label">
+          <button type="button" data-range="7" aria-pressed="false">7 days</button>
+          <button type="button" data-range="30" aria-pressed="false">30 days</button>
+          <button type="button" data-range="90" aria-pressed="false">90 days</button>
+          <button type="button" data-range="all" aria-pressed="true">All time</button>
+        </div>
+      </div>
+
+      <label class="data-filter">
+        <span class="data-filter-label">From</span>
+        <input type="date" data-from />
+      </label>
+
+      <label class="data-filter">
+        <span class="data-filter-label">To</span>
+        <input type="date" data-to />
+      </label>
+
+      <label class="data-filter">
+        <span class="data-filter-label">Channel</span>
+        <select data-channel>
+          <option value="">All channels</option>
+          {channelOptions.map((channel) => (
+            <option value={channel.id}>#{channel.name} ({formatInteger(channel.total)})</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="data-filter">
+        <span class="data-filter-label">Moderator</span>
+        <select data-actor>
+          <option value="">Anyone</option>
+          {actorOptions.map((actor) => (
+            <option value={actor.id}>{actor.name}</option>
+          ))}
+        </select>
+      </label>
+
+      <label class="data-filter">
+        <span class="data-filter-label">Type</span>
+        <select data-kind>
+          <option value="">Messages and threads</option>
+          <option value="message">Messages only</option>
+          <option value="thread">Threads only</option>
+        </select>
+      </label>
+
+      <button type="button" class="data-filter-reset" data-reset>Reset</button>
+
+      <p class="data-filter-summary" data-filter-summary aria-live="polite">
+        Showing all {formatInteger(dataset.events.length)} logged deletions.
+      </p>
+    </form>
+
+    <section class="data-hero">
+      <HeroFigure
+        statKey="total"
+        value={formatInteger(summary.total)}
+        label="deletions logged"
+        note={rangeLabel}
+      />
+      <div class="stat-row">
+        <StatTile
+          statKey="messages"
+          label="Single messages"
+          value={formatInteger(summary.messages)}
+          deltaLabel="of all deletions"
+          delta={`${Math.round((summary.messages / Math.max(summary.total, 1)) * 100)}%`}
+        />
+        <StatTile
+          statKey="threads"
+          label="Threads"
+          value={formatInteger(summary.threads)}
+          deltaLabel="of all deletions"
+          delta={`${Math.round((summary.threads / Math.max(summary.total, 1)) * 100)}%`}
+        />
+        <StatTile
+          statKey="removed"
+          label="Messages removed"
+          value={formatInteger(summary.removed)}
+          note="Counting every message inside a deleted thread"
+        />
+        <StatTile
+          statKey="channels"
+          label="Channels touched"
+          value={formatInteger(summary.channels)}
+        />
+        <StatTile
+          statKey="perDay"
+          label="Per day"
+          value={summary.perDay.toFixed(1)}
+          note={`Across ${formatInteger(days.length)} days`}
+        />
+        <StatTile
+          statKey="attributed"
+          label="Name a moderator"
+          value={`${Math.round((summary.attributed / Math.max(summary.total, 1)) * 100)}%`}
+          note={`${formatInteger(summary.total - summary.attributed)} lines credit nobody`}
+        />
+      </div>
+    </section>
+
+    <noscript>
+      <p class="data-note">
+        The charts below are drawn in the browser. With JavaScript turned off you still get
+        the headline figures above; the underlying log is readable in Slack.
+      </p>
+    </noscript>
+
+    <div class="chart-grid">
+      <ChartFigure
+        figureId="chart-daily"
+        wide
+        title="Deletions per day, by channel"
+        note="A seven-day average for each of the five busiest channels, with every other channel as one line. Raw daily counts are too spiky to compare."
+        height={300}
+        source="#prometheus-public via Indigest"
+      />
+
+      <ChartFigure
+        figureId="chart-channels"
+        wide
+        title="Channels with the most deletions"
+        note="Each bar splits into the single messages and the whole threads removed from that channel."
+        source="#prometheus-public via Indigest"
+      />
+
+      <ChartFigure
+        figureId="chart-actors"
+        wide
+        title="Moderators named in the log"
+        note="Only the lines that credit somebody. The rest of the log records the deletion without a name, and those are left out of this chart entirely."
+        source="#prometheus-public via Indigest"
+      />
+
+      <ChartFigure
+        figureId="chart-share"
+        title="Share of deletions by channel"
+        note="The five busiest channels, with everything else folded into one slice."
+        source="#prometheus-public via Indigest"
+      />
+
+      <ChartFigure
+        figureId="chart-threads"
+        title="How big were the deleted threads?"
+        note="Thread deletions that report a length, bucketed by how many messages went with them."
+        height={200}
+        source="#prometheus-public via Indigest"
+      />
+
+      <ChartFigure
+        figureId="chart-clock"
+        wide
+        title="Deletions by weekday and hour (UTC)"
+        note="Darker is busier. Hours are UTC, not the moderator's local time."
+        source="#prometheus-public via Indigest"
+      />
+    </div>
+
+    <section class="data-note">
+      <h2>How these numbers are counted</h2>
+      <ul>
+        <li>
+          Every figure comes from parsing the {formatInteger(dataset.totalLines)} lines posted in
+          #{PROMETHEUS_CHANNEL_NAME}. {formatInteger(dataset.unparsed)} of them are human asides
+          rather than bot log lines, and are not counted as deletions.
+        </li>
+        <li>
+          A <em>message</em> deletion removes one message. A <em>thread</em> deletion removes the
+          whole thread; where the log reports a length, that length is what "messages removed" adds up.
+        </li>
+        <li>
+          {formatInteger(dataset.unattributed)} of {formatInteger(dataset.events.length)} log lines
+          name no moderator. Those deletions still count in every total on this page, but they cannot
+          appear in the moderator chart.
+        </li>
+        <li>
+          The log only covers channels Prometheus watches, and only deletions it sees. Absence from
+          this page is not evidence that nothing was deleted.
+        </li>
+        <li>Days, weekdays and hours are bucketed in UTC.</li>
+      </ul>
+    </section>
+
+    <script is:inline type="application/json" id="prometheus-data" set:html={JSON.stringify(clientData).replaceAll("<", "\\u003c")} />
+  </div>
+
+  <script>
+    import { renderChart } from "../../lib/charts/render";
+    import type { ChartSpec } from "../../lib/charts/spec";
+    import type { DeletionEvent } from "../../lib/prometheus";
+    import {
+      byActor,
+      byChannel,
+      dailySeries,
+      filterEvents,
+      rollingAverage,
+      summarize,
+      threadSizeBuckets,
+      weekdayHourMatrix,
+      WEEKDAYS,
+      UNKNOWN_CHANNEL,
+      type DeletionFilters
+    } from "../../lib/prometheus-aggregate";
+    import { formatDayRange, formatInteger, formatFullDate, toDayKey } from "../../lib/charts/format";
+
+    type ClientData = {
+      events: DeletionEvent[];
+      channelNames: Record<string, string>;
+      actorNames: Record<string, string>;
+      featuredChannels: Array<{ id: string; color: string }>;
+      colors: { message: string; thread: string; other: string; ramp: string[] };
+    };
+
+    const DAY_MS = 86_400_000;
+
+    function initialise() {
+      const root = document.querySelector<HTMLElement>("[data-prometheus-dashboard]");
+      if (!root || root.dataset.ready === "true") return;
+
+      const source = root.querySelector<HTMLScriptElement>("#prometheus-data");
+      if (!source?.textContent) return;
+
+      const data = JSON.parse(source.textContent) as ClientData;
+      root.dataset.ready = "true";
+
+      const form = root.querySelector<HTMLFormElement>("[data-filters]");
+      const fromInput = root.querySelector<HTMLInputElement>("[data-from]");
+      const toInput = root.querySelector<HTMLInputElement>("[data-to]");
+      const channelSelect = root.querySelector<HTMLSelectElement>("[data-channel]");
+      const actorSelect = root.querySelector<HTMLSelectElement>("[data-actor]");
+      const kindSelect = root.querySelector<HTMLSelectElement>("[data-kind]");
+      const summaryLine = root.querySelector<HTMLElement>("[data-filter-summary]");
+      const rangeButtons = Array.from(
+        root.querySelectorAll<HTMLButtonElement>("[data-range]")
+      );
+
+      const channelLabel = (id: string) =>
+        id === UNKNOWN_CHANNEL ? "Channel not named" : `#${data.channelNames[id] ?? id}`;
+      const actorLabel = (id: string) => data.actorNames[id] ?? id;
+
+      const figure = (id: string) => document.getElementById(id);
+
+      function draw(id: string, spec: ChartSpec) {
+        const host = figure(id);
+        if (host) renderChart(host, spec);
+      }
+
+      function setStat(key: string, value: string, note?: string) {
+        const tile = root!.querySelector<HTMLElement>(`[data-stat="${key}"]`);
+        if (!tile) return;
+        const valueNode = tile.querySelector<HTMLElement>("[data-stat-value]");
+        if (valueNode) valueNode.textContent = value;
+        if (note !== undefined) {
+          const noteNode = tile.querySelector<HTMLElement>("[data-stat-note]");
+          if (noteNode) noteNode.textContent = note;
+        }
+      }
+
+      function readFilters(): DeletionFilters & { range: string } {
+        const range = rangeButtons.find((button) => button.getAttribute("aria-pressed") === "true");
+        const filters: DeletionFilters & { range: string } = {
+          range: range?.dataset.range ?? "all",
+          channelId: channelSelect?.value || undefined,
+          actorId: actorSelect?.value || undefined,
+          kind: (kindSelect?.value || undefined) as DeletionFilters["kind"]
+        };
+
+        if (fromInput?.value) filters.from = Date.parse(`${fromInput.value}T00:00:00Z`);
+        if (toInput?.value) filters.to = Date.parse(`${toInput.value}T23:59:59.999Z`);
+
+        if (filters.range !== "all" && !fromInput?.value && !toInput?.value) {
+          const days = Number(filters.range);
+          if (Number.isFinite(days)) {
+            const last = data.events[data.events.length - 1]?.at ?? Date.now();
+            filters.to = Date.parse(`${toDayKey(last)}T23:59:59.999Z`);
+            filters.from = filters.to - days * DAY_MS + 1;
+          }
+        }
+
+        return filters;
+      }
+
+      function syncUrl(filters: ReturnType<typeof readFilters>) {
+        const params = new URLSearchParams();
+        if (filters.range !== "all") params.set("range", filters.range);
+        if (fromInput?.value) params.set("from", fromInput.value);
+        if (toInput?.value) params.set("to", toInput.value);
+        if (filters.channelId) params.set("channel", filters.channelId);
+        if (filters.actorId) params.set("moderator", filters.actorId);
+        if (filters.kind) params.set("type", filters.kind);
+
+        const query = params.toString();
+        history.replaceState(null, "", query ? `?${query}` : location.pathname);
+      }
+
+      function applyUrl() {
+        const params = new URLSearchParams(location.search);
+        const range = params.get("range");
+        if (range) {
+          rangeButtons.forEach((button) =>
+            button.setAttribute("aria-pressed", String(button.dataset.range === range))
+          );
+        }
+        if (fromInput && params.get("from")) fromInput.value = params.get("from") as string;
+        if (toInput && params.get("to")) toInput.value = params.get("to") as string;
+        if (channelSelect && params.get("channel")) channelSelect.value = params.get("channel") as string;
+        if (actorSelect && params.get("moderator")) actorSelect.value = params.get("moderator") as string;
+        if (kindSelect && params.get("type")) kindSelect.value = params.get("type") as string;
+      }
+
+      function render() {
+        const filters = readFilters();
+        // Averages are computed over the whole log for the chosen channel,
+        // moderator and type, then cut to the visible dates. Averaging only the
+        // visible slice would make the first week of any range an average of
+        // one to six days while still calling itself seven-day.
+        const scoped = filterEvents(data.events, {
+          channelId: filters.channelId,
+          actorId: filters.actorId,
+          kind: filters.kind
+        });
+        const span =
+          scoped.length > 0
+            ? { from: scoped[0].at, to: scoped[scoped.length - 1].at }
+            : undefined;
+
+        const events = filterEvents(scoped, {
+          from: filters.from,
+          to: filters.to
+        });
+
+        const bounds =
+          filters.from !== undefined && filters.to !== undefined
+            ? { from: filters.from, to: filters.to }
+            : undefined;
+        const days = dailySeries(events, bounds);
+        const summary = summarize(events, days);
+        const firstDay = days[0]?.day ?? "";
+        const lastDay = days[days.length - 1]?.day ?? "";
+
+        // Headline figures
+        setStat("total", formatInteger(summary.total));
+        setStat("messages", formatInteger(summary.messages));
+        setStat("threads", formatInteger(summary.threads));
+        setStat("removed", formatInteger(summary.removed));
+        setStat("channels", formatInteger(summary.channels));
+        setStat("perDay", summary.perDay.toFixed(1), `Across ${formatInteger(days.length)} days`);
+        setStat(
+          "attributed",
+          `${Math.round((summary.attributed / Math.max(summary.total, 1)) * 100)}%`,
+          `${formatInteger(summary.total - summary.attributed)} lines credit nobody`
+        );
+
+        const totalNote = root!.querySelector<HTMLElement>('[data-stat="total"] [data-stat-note]');
+        if (totalNote) {
+          totalNote.textContent =
+            days.length > 0
+              ? formatDayRange(days[0].day, days[days.length - 1].day)
+              : "No deletions in this slice";
+        }
+
+        for (const key of ["messages", "threads"] as const) {
+          const tile = root!.querySelector<HTMLElement>(`[data-stat="${key}"] [data-stat-delta] .stat-tile-delta-value`);
+          if (tile) {
+            const value = key === "messages" ? summary.messages : summary.threads;
+            tile.textContent = `${Math.round((value / Math.max(summary.total, 1)) * 100)}%`;
+          }
+        }
+
+        if (summaryLine) {
+          const parts = [`Showing ${formatInteger(summary.total)} deletions`];
+          if (filters.channelId) parts.push(`in ${channelLabel(filters.channelId)}`);
+          if (filters.actorId) parts.push(`by ${actorLabel(filters.actorId)}`);
+          if (filters.kind) parts.push(filters.kind === "thread" ? "(threads only)" : "(messages only)");
+          if (days.length > 0) {
+            parts.push(`between ${formatFullDate(days[0].day)} and ${formatFullDate(days[days.length - 1].day)}`);
+          }
+          summaryLine.textContent = `${parts.join(" ")}.`;
+        }
+
+        // One line per channel. Raw daily counts for a single channel are
+        // mostly zeroes with the odd spike, so each line is that channel's
+        // seven-day average — the same treatment for every series, on one
+        // scale.
+        const featuredIds = new Set(data.featuredChannels.map((channel) => channel.id));
+        const channelLines = [
+          ...data.featuredChannels.map((channel) => ({
+            key: channel.id,
+            label: channelLabel(channel.id),
+            color: channel.color,
+            events: scoped.filter((event) => event.channelId === channel.id)
+          })),
+          {
+            key: "other",
+            label: "Every other channel",
+            color: data.colors.other,
+            events: scoped.filter((event) => !featuredIds.has(event.channelId ?? ""))
+          }
+        ].filter((line) => line.events.length > 0);
+
+        draw("chart-daily", {
+          type: "timeseries",
+          unit: "deletions per day",
+          height: 300,
+          series: channelLines.map((line) => ({
+            key: line.key,
+            label: line.label,
+            color: line.color,
+            kind: "line" as const,
+            data: rollingAverage(dailySeries(line.events, span), "total", 7)
+              .filter((point) => point.day >= firstDay && point.day <= lastDay)
+              .map((point) => ({
+                time: point.day,
+                value: Number(point.value.toFixed(2))
+              }))
+          }))
+        });
+
+        // Channels, split by what kind of deletion it was.
+        const channels = byChannel(events).slice(0, 12);
+        draw("chart-channels", {
+          type: "bars",
+          unit: "deletions",
+          valueLabel: "Deletions",
+          legend: [
+            { key: "message", label: "Messages", color: data.colors.message },
+            { key: "thread", label: "Threads", color: data.colors.thread }
+          ],
+          rows: channels.map((row) => ({
+            key: row.key,
+            label: channelLabel(row.key),
+            href: row.key.startsWith("C")
+              ? `https://hackclub.slack.com/archives/${row.key}`
+              : undefined,
+            segments: [
+              { key: "message", label: "Messages", color: data.colors.message, value: row.messages },
+              { key: "thread", label: "Threads", color: data.colors.thread, value: row.threads }
+            ]
+          }))
+        });
+
+        const actors = byActor(events).slice(0, 12);
+        draw("chart-actors", {
+          type: "bars",
+          unit: "deletions",
+          valueLabel: "Deletions",
+          legend: [
+            { key: "message", label: "Messages", color: data.colors.message },
+            { key: "thread", label: "Threads", color: data.colors.thread }
+          ],
+          rows: actors.map((row) => ({
+            key: row.key,
+            label: actorLabel(row.key),
+            segments: [
+              { key: "message", label: "Messages", color: data.colors.message, value: row.messages },
+              { key: "thread", label: "Threads", color: data.colors.thread, value: row.threads }
+            ]
+          }))
+        });
+
+        // Part-to-whole, capped at six slices so it stays readable at a glance.
+        // The five named slices are fixed for the life of the page; only their
+        // sizes move when the filters change.
+        const totalsByChannel = new Map(byChannel(events).map((row) => [row.key, row.total]));
+        const featured = data.featuredChannels
+          .map((channel) => ({
+            key: channel.id,
+            label: channelLabel(channel.id),
+            value: totalsByChannel.get(channel.id) ?? 0,
+            color: channel.color
+          }))
+          .filter((slice) => slice.value > 0);
+        const tail = [...totalsByChannel.entries()]
+          .filter(([key]) => !featuredIds.has(key))
+          .reduce((sum, [, value]) => sum + value, 0);
+
+        draw("chart-share", {
+          type: "donut",
+          unit: "deletions",
+          centerValue: formatInteger(summary.total),
+          centerLabel: "deletions",
+          slices: [
+            ...featured,
+            ...(tail > 0
+              ? [{ key: "other", label: "Every other channel", value: tail, color: data.colors.other }]
+              : [])
+          ]
+        });
+
+        draw("chart-threads", {
+          type: "columns",
+          color: data.colors.thread,
+          unit: "thread deletions",
+          valueLabel: "Thread deletions",
+          categoryLabel: "Messages in thread",
+          bars: threadSizeBuckets(events).map((bucket) => ({
+            key: bucket.key,
+            label: bucket.label,
+            value: bucket.count
+          }))
+        });
+
+        const matrix = weekdayHourMatrix(events);
+        draw("chart-clock", {
+          type: "heatmap",
+          unit: "deletions",
+          rowLabel: "Day",
+          columnLabel: "Hour (UTC)",
+          ramp: data.colors.ramp,
+          rows: WEEKDAYS,
+          columns: Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, "0")}:00`),
+          values: matrix
+        });
+
+        syncUrl(filters);
+      }
+
+      rangeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          rangeButtons.forEach((other) => other.setAttribute("aria-pressed", String(other === button)));
+          // A preset replaces a custom range rather than fighting with it.
+          if (fromInput) fromInput.value = "";
+          if (toInput) toInput.value = "";
+          render();
+        });
+      });
+
+      form?.addEventListener("change", (event) => {
+        if (event.target === fromInput || event.target === toInput) {
+          rangeButtons.forEach((button) =>
+            button.setAttribute("aria-pressed", String(button.dataset.range === "all"))
+          );
+        }
+        render();
+      });
+
+      root.querySelector<HTMLButtonElement>("[data-reset]")?.addEventListener("click", () => {
+        if (fromInput) fromInput.value = "";
+        if (toInput) toInput.value = "";
+        if (channelSelect) channelSelect.value = "";
+        if (actorSelect) actorSelect.value = "";
+        if (kindSelect) kindSelect.value = "";
+        rangeButtons.forEach((button) =>
+          button.setAttribute("aria-pressed", String(button.dataset.range === "all"))
+        );
+        render();
+      });
+
+      applyUrl();
+      render();
+    }
+
+    initialise();
+    document.addEventListener("astro:page-load", initialise);
+  </script>
+</BaseLayout>

@@ -1,0 +1,30 @@
+---
+interface Props {
+  label: string;
+  value?: string;
+  /** Signed, and always paired with the period it is measured against. */
+  delta?: string;
+  deltaLabel?: string;
+  deltaDirection?: "up" | "down" | "flat";
+  note?: string;
+  /** Lets a dashboard script rewrite the tile when the filters change. */
+  statKey?: string;
+}
+
+const { label, value, delta, deltaLabel, deltaDirection, note, statKey } = Astro.props;
+---
+
+<div class="stat-tile" data-stat={statKey}>
+  <span class="stat-tile-label">{label}</span>
+  <span class="stat-tile-value" data-stat-value>{value}</span>
+  {(delta || deltaLabel) && (
+    <span
+      class:list={["stat-tile-delta", deltaDirection && `stat-tile-delta--${deltaDirection}`]}
+      data-stat-delta
+    >
+      {delta && <span class="stat-tile-delta-value">{delta}</span>}
+      {deltaLabel && <span class="stat-tile-delta-label">{deltaLabel}</span>}
+    </span>
+  )}
+  {note && <span class="stat-tile-note" data-stat-note>{note}</span>}
+</div>

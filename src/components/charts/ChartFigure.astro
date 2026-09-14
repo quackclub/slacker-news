@@ -1,0 +1,89 @@
+---
+import { buildTable } from "../../lib/charts/table";
+import type { ChartSpec } from "../../lib/charts/spec";
+
+interface Props {
+  title: string;
+  note?: string;
+  source?: string;
+  sourceHref?: string;
+  height?: number;
+  /** Provide for a chart with fixed data; omit when a dashboard script drives it. */
+  spec?: ChartSpec;
+  figureId?: string;
+  tableSummary?: string;
+  wide?: boolean;
+}
+
+const {
+  title,
+  note,
+  source,
+  sourceHref,
+  height,
+  spec,
+  figureId,
+  tableSummary = "Show the numbers",
+  wide = false
+} = Astro.props;
+
+const table = spec ? buildTable(spec) : undefined;
+const numeric = new Set(table?.numeric ?? []);
+// A spec is inlined as JSON, so any `<` in a label has to stop being markup.
+const serialized = spec ? JSON.stringify(spec).replaceAll("<", "\\u003c") : undefined;
+---
+
+<figure
+  class:list={["chart-figure", wide && "chart-figure--wide"]}
+  id={figureId}
+  data-chart-figure
+  data-chart-static={spec ? "true" : undefined}
+>
+  <figcaption class="chart-head">
+    <h3 class="chart-title">{title}</h3>
+    {note && <p class="chart-note">{note}</p>}
+  </figcaption>
+
+  <div class="chart-legend" data-chart-legend hidden></div>
+
+  <div
+    class="chart-plot"
+    data-chart-plot
+    style={height ? `--chart-plot-height: ${height}px` : undefined}
+    aria-hidden="true"
+  ></div>
+
+  <details class="chart-data">
+    <summary>{tableSummary}</summary>
+    <div class="chart-data-scroll" data-chart-table>
+      {table && (
+        <table class="chart-table-grid">
+          <thead>
+            <tr>
+              {table.columns.map((column, index) => (
+                <th scope="col" class:list={[numeric.has(index) && "is-numeric"]}>{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.rows.map((row) => (
+              <tr>
+                {row.map((value, index) => (
+                  <td class:list={[numeric.has(index) && "is-numeric"]}>{value}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  </details>
+
+  {source && (
+    <p class="chart-source">
+      Source: {sourceHref ? <a href={sourceHref} rel="noreferrer noopener" target="_blank">{source}</a> : source}
+    </p>
+  )}
+
+  {serialized && <script type="application/json" data-chart-spec set:html={serialized} />}
+</figure>

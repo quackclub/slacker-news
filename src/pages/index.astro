@@ -9,6 +9,7 @@ import {
   truncateWords
 } from "../lib/content";
 import HomepageSlackColumns from "../components/HomepageSlackColumns.astro";
+import HomepageDataColumn from "../components/HomepageDataColumn.astro";
 
 import ColumnFeedCard from "../components/ColumnFeedCard.astro";
 import { getColumnFeedItems } from "../lib/column-feed";
@@ -77,6 +78,25 @@ function getSlackMessagesPerRow(column: { homepageMessagesPerRow?: number }): nu
 function getSlackHomepageLimit(column: { homepageLimit?: number; homepageFetchLimit?: number; limit?: number }): number {
   return Math.min(Math.max(Math.round(column.homepageLimit ?? column.homepageFetchLimit ?? column.limit ?? 5), 1), 100);
 }
+
+// Shown while the live figures for the data column are still loading.
+const dataColumnFallback = [
+  {
+    href: "/data/prometheus/",
+    title: "What gets deleted in the Hack Club Slack",
+    note: "Every message and thread Prometheus has logged as deleted, by channel and by moderator."
+  },
+  {
+    href: "/data/slack/",
+    title: "The Hack Club Slack, day by day",
+    note: "Members, active users and messages posted, from the workspace analytics export."
+  },
+  {
+    href: "/data/ships/",
+    title: "What Hack Clubbers ship",
+    note: "Projects, hours and shippers across every You Ship, We Ship program."
+  }
+];
 
 function splitSubtitle(subtitle: string): { prefix: string; channelLabel: string | null } {
   const match = subtitle.match(/^(.*)#(\S+)$/);
@@ -164,6 +184,28 @@ function splitSubtitle(subtitle: string): { prefix: string; channelLabel: string
     )}
 
     <hr class="section-rule accent-cyan" />
+
+    <section class="front-section" style="--accent: #2a6a9b">
+      <div class="section-kicker">
+        <span class="section-label">Data</span>
+      </div>
+      <HomepageDataColumn server:defer>
+        <div slot="fallback" class="front-bottom front-bottom--3">
+          {dataColumnFallback.map((card) => (
+            <a href={card.href} class="front-block story-block">
+              <header class="story-card-header">
+                <h3 class="story-block-title">{card.title}</h3>
+              </header>
+              <p class="story-block-excerpt">{card.note}</p>
+            </a>
+          ))}
+        </div>
+      </HomepageDataColumn>
+    </section>
+
+    <a href="/data/" class="news-archive-link" style="--accent: #2a6a9b">All data &rarr;</a>
+
+    <hr class="section-rule" style="--accent: #2a6a9b" />
 
     <div id="homepage-slack-columns-stale" hidden aria-hidden="true"></div>
     <div id="homepage-slack-columns-live">

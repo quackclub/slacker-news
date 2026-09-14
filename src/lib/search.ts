@@ -151,10 +151,50 @@ export function slackMessageToDocument(
     readingTime,
     text: cleanText,
     author: "",
-    date: message.timestamp ? new Date(parseFloat(message.timestamp) * 1000).toISOString().slice(0, 10) : "",
+    date: message.timestamp
+      ? new Date(parseFloat(message.timestamp) * 1000)
+          .toISOString()
+          .slice(0, 10)
+      : "",
     titleTerms: termFrequency(String(title)),
     bodyTerms: termFrequency(cleanText),
     authorTerms: {},
+  };
+}
+
+export function dataReportToDocument(report: {
+  url: string;
+  title: string;
+  excerpt: string;
+  readingTime: number;
+  date: Date;
+  author?: string | string[];
+  body: string;
+}): SearchDocument {
+  const text = report.body
+    .replace(/^import\s.+$/gm, "")
+    .replace(/^export\s.+$/gm, "")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/[#*_`>-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const author = Array.isArray(report.author)
+    ? report.author.join(", ")
+    : (report.author ?? "");
+
+  return {
+    url: report.url,
+    title: report.title,
+    excerpt: report.excerpt,
+    category: "Data",
+    accent: "#158f6e",
+    readingTime: report.readingTime,
+    text,
+    author,
+    date: report.date.toISOString().slice(0, 10),
+    titleTerms: termFrequency(report.title),
+    bodyTerms: termFrequency(`${report.excerpt} ${text}`),
+    authorTerms: termFrequency(author),
   };
 }
 
@@ -184,11 +224,15 @@ export function buildSearchIndex(
     accent: post.category ? POST_CATEGORY_ACCENTS[post.category] : undefined,
     readingTime: post.readingTime,
     text: post.paragraphs.join(" "),
-    author: Array.isArray(post.author) ? post.author.join(", ") : (post.author ?? ""),
+    author: Array.isArray(post.author)
+      ? post.author.join(", ")
+      : (post.author ?? ""),
     date: post.date.toISOString().slice(0, 10),
     titleTerms: termFrequency(post.title),
     bodyTerms: termFrequency(post.paragraphs.join(" ")),
-    authorTerms: termFrequency(Array.isArray(post.author) ? post.author.join(" ") : (post.author ?? "")),
+    authorTerms: termFrequency(
+      Array.isArray(post.author) ? post.author.join(" ") : (post.author ?? ""),
+    ),
   }));
 
   return {

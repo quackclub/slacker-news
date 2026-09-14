@@ -52,6 +52,7 @@ function toAbsoluteURL(input: string): string {
 const canonicalURL = toAbsoluteURL(canonicalPath ?? Astro.url.pathname);
 
 const navLinks = [
+  { label: "Data", href: "/data/" },
   { label: "Search", href: "/search/" },
   { label: "About", href: "/about/" },
   { label: "Submissions", href: "/submissions/" },

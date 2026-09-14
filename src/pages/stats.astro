@@ -14,7 +14,7 @@ type CounterRow = {
   url: string;
 };
 
-const staticPaths = ["/", "/about/", "/submissions/", "/acknowledgements/", "/changelogs/", "/news/", "/opinion/", "/essays/", "/stats/"];
+const staticPaths = ["/", "/about/", "/submissions/", "/acknowledgements/", "/changelogs/", "/news/", "/opinion/", "/essays/", "/stats/", "/data/", "/data/prometheus/", "/data/slack/", "/data/ships/"];
 
 const pageRows: CounterRow[] = staticPaths.map((path) => {
   const key = generateAbacusKey(path);

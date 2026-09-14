@@ -1,0 +1,98 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getSiteConfig } from "../../lib/content";
+import { getDataReports } from "../../lib/data-reports";
+import { getPrometheusDataset } from "../../lib/prometheus";
+import { dailySeries, summarize } from "../../lib/prometheus-aggregate";
+import { getWorkspaceDataset } from "../../lib/slack-workspace";
+import { getYswsDataset } from "../../lib/ysws";
+import { formatCompact, formatInteger } from "../../lib/charts/format";
+
+export const prerender = false;
+
+const site = await getSiteConfig();
+
+// Each source is fetched independently: one of them being down should cost its
+// own card its figures, not take the page with it.
+const [prometheus, workspace, ysws, reports] = await Promise.all([
+  getPrometheusDataset().catch(() => undefined),
+  getWorkspaceDataset().catch(() => undefined),
+  getYswsDataset().catch(() => undefined),
+  getDataReports()
+]);
+
+const deletions = prometheus
+  ? summarize(prometheus.events, dailySeries(prometheus.events))
+  : undefined;
+const members = workspace?.figures.find((figure) => figure.key === "total_members");
+const monthlyActive = workspace?.figures.find((figure) => figure.key === "monthly_active_users");
+
+const dashboards = [
+  {
+    href: "/data/prometheus/",
+    title: "What gets deleted in the Hack Club Slack",
+    note: "Every message and thread the Prometheus bot has logged as deleted, by channel, by moderator and over time.",
+    figures: [
+      deletions && `${formatInteger(deletions.total)} deletions`,
+      deletions && `${formatInteger(deletions.channels)} channels`
+    ].filter(Boolean) as string[]
+  },
+  {
+    href: "/data/slack/",
+    title: "The Hack Club Slack, day by day",
+    note: "Members, claimed accounts, active users and messages posted, from the workspace analytics export.",
+    figures: [
+      members && `${formatCompact(members.value)} members`,
+      monthlyActive && `${formatCompact(monthlyActive.value)} monthly active`
+    ].filter(Boolean) as string[]
+  },
+  {
+    href: "/data/ships/",
+    title: "What Hack Clubbers ship",
+    note: "Projects, hours and shippers across every You Ship, We Ship program, by month, by program and by country.",
+    figures: [
+      ysws?.overview.projects && `${formatCompact(ysws.overview.projects)} projects`,
+      ysws?.overview.programs && `${formatInteger(ysws.overview.programs)} programs`
+    ].filter(Boolean) as string[]
+  }
+];
+---
+
+<BaseLayout
+  title="Data"
+  description="Dashboards and data reporting from Slacker News: Slack moderation, workspace activity and shipping, built from live sources."
+  siteTitle={site.title}
+  siteDescription={site.description}
+  accentColor="#2a6a9b"
+>
+  <div class="archive-page accent-data">
+    <div class="section-label">Data</div>
+    <hr class="section-rule" />
+    <div class="archive-list">
+      {dashboards.map((dashboard) => (
+        <a href={dashboard.href} class="front-block story-block">
+          <span class="story-kicker">Dashboard</span>
+          <header class="story-card-header">
+            <h3 class="story-block-title">{dashboard.title}</h3>
+          </header>
+          <p class="story-block-excerpt">{dashboard.note}</p>
+          {dashboard.figures.length > 0 && (
+            <span class="reading-time">{dashboard.figures.join(" · ")}</span>
+          )}
+        </a>
+      ))}
+
+      {reports.map((report) => (
+        <a href={report.url} class="front-block story-block">
+          <span class="story-kicker">Report</span>
+          <header class="story-card-header">
+            <h3 class="story-block-title">{report.title}</h3>
+            <time class="story-card-date" datetime={report.date.toISOString()}>{report.dateLabel}</time>
+          </header>
+          <p class="story-block-excerpt">{report.excerpt}</p>
+          <span class="reading-time">{report.readingTime} min read</span>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>

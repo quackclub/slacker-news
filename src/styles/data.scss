@@ -1,0 +1,831 @@
+// ─── Data desk ───────────────────────────────────────────────────────────────
+// Dashboards and data articles. The page furniture stays newspaper; the charts
+// themselves are deliberately quiet — hairlines, thin marks, white doing the
+// separating — so the data is the only loud thing on the page.
+
+// Chart tokens live at the root so a chart card can also appear on the front
+// page, outside `.data-page`.
+:root {
+  --chart-surface: #fff;
+  --chart-ink: #111;
+  --chart-ink-2: #3f4450;
+  --chart-muted: #6f7482;
+  --chart-grid: #e4e4dc;
+  --chart-hairline: #d9d9d1;
+}
+
+.data-page {
+  // The site's text column is 770px. A dashboard needs more than that, so the
+  // data pages step out of the wrapper and take the viewport's width instead.
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1240px, calc(100vw - 32px));
+  margin: 28px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+// ─── Masthead ────────────────────────────────────────────────────────────────
+
+.data-masthead {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.data-headline {
+  font-family: Georgia, serif;
+  font-size: clamp(1.9rem, 4vw, 2.9rem);
+  line-height: 1.12;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.data-standfirst {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 1.02rem;
+  line-height: 1.55;
+  color: var(--chart-ink-2);
+}
+
+.data-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.data-meta a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// ─── Filter row ──────────────────────────────────────────────────────────────
+
+.data-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px 18px;
+  padding: 14px 16px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 10px;
+}
+
+.data-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.data-filter-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.data-filter select,
+.data-filter input {
+  font: inherit;
+  font-size: 0.9rem;
+  padding: 6px 9px;
+  max-width: 17rem;
+  color: var(--chart-ink);
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 6px;
+}
+
+.data-range {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.data-range button {
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 11px;
+  cursor: pointer;
+  color: var(--chart-ink-2);
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 999px;
+}
+
+.data-range button:hover {
+  background: color-mix(in srgb, var(--accent) 7%, #fff);
+}
+
+.data-range button[aria-pressed="true"] {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.data-filter-reset {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 6px 0;
+  cursor: pointer;
+  color: var(--chart-muted);
+  background: none;
+  border: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.data-filter-summary {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--chart-muted);
+}
+
+// ─── Headline figures ────────────────────────────────────────────────────────
+
+.data-hero {
+  display: grid;
+  grid-template-columns: minmax(230px, 1fr) 2fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.hero-figure {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 20px 22px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+}
+
+.hero-figure-value {
+  // Proportional figures: tabular digits read loose at display sizes.
+  font-size: clamp(2.8rem, 6vw, 3.6rem);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--chart-ink);
+}
+
+.hero-figure-label {
+  font-size: 0.95rem;
+  color: var(--chart-ink-2);
+}
+
+.hero-figure-note {
+  font-size: 0.8rem;
+  color: var(--chart-muted);
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+// Six tiles is the common case: three across reads better than five and an
+// orphan.
+@media (min-width: 901px) {
+  .stat-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.stat-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 16px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 10px;
+}
+
+.stat-tile-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.stat-tile-value {
+  font-size: 1.7rem;
+  font-weight: 650;
+  line-height: 1.1;
+  color: var(--chart-ink);
+}
+
+.stat-tile-delta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: var(--chart-muted);
+}
+
+.stat-tile-delta-value {
+  font-weight: 650;
+  color: var(--chart-ink-2);
+}
+
+.stat-tile-note {
+  font-size: 0.76rem;
+  color: var(--chart-muted);
+}
+
+// ─── Chart cards ─────────────────────────────────────────────────────────────
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.chart-figure {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 18px 20px 16px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 10px;
+  min-width: 0;
+}
+
+.chart-figure--wide {
+  grid-column: 1 / -1;
+}
+
+.chart-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chart-title {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 1.12rem;
+  line-height: 1.25;
+  color: var(--chart-ink);
+}
+
+.chart-note {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--chart-ink-2);
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 0.8rem;
+  color: var(--chart-ink-2);
+}
+
+.chart-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend-key {
+  display: inline-block;
+  flex: 0 0 auto;
+  border-radius: 2px;
+}
+
+.chart-legend-key--rect {
+  width: 11px;
+  height: 11px;
+}
+
+.chart-legend-key--line {
+  width: 15px;
+  height: 2px;
+}
+
+.chart-plot {
+  min-height: var(--chart-plot-height, auto);
+  min-width: 0;
+}
+
+.chart-empty {
+  margin: 0;
+  padding: 18px 0;
+  font-size: 0.88rem;
+  color: var(--chart-muted);
+}
+
+.chart-source {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--chart-muted);
+}
+
+.chart-source a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+// Opt this graphic out of the site-wide dark-mode image re-inversion so it
+// flips with the page rather than against it.
+html.dark-mode .chart-svg,
+html.dark-mode .chart-figure svg {
+  filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not(.light-mode):not(.dark-mode) .chart-svg,
+  html:not(.light-mode):not(.dark-mode) .chart-figure svg {
+    filter: none;
+  }
+}
+
+// ─── Table view ──────────────────────────────────────────────────────────────
+
+.chart-data {
+  border-top: 1px solid var(--chart-grid);
+  padding-top: 8px;
+}
+
+.chart-data > summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.chart-data-scroll {
+  max-height: 20rem;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.chart-table-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.chart-table-grid th,
+.chart-table-grid td {
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--chart-grid);
+}
+
+.chart-table-grid th {
+  position: sticky;
+  top: 0;
+  background: var(--chart-surface);
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.chart-table-grid .is-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+// ─── Tooltip ─────────────────────────────────────────────────────────────────
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 5;
+  pointer-events: none;
+  min-width: 8rem;
+  padding: 8px 10px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  font-size: 0.82rem;
+}
+
+.chart-tooltip-title {
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+.chart-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  line-height: 1.5;
+}
+
+.chart-tooltip-key {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  transform: translateY(-3px);
+}
+
+// Values lead, labels follow: here the reader has the series and wants the number.
+.chart-tooltip-value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--chart-ink);
+}
+
+.chart-tooltip-label {
+  color: var(--chart-muted);
+}
+
+// ─── Bars ────────────────────────────────────────────────────────────────────
+
+.chart-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.chart-bar-row {
+  display: grid;
+  // A fixed label column and a fixed value column mean every bar in every
+  // chart starts and ends on the same two lines.
+  grid-template-columns: minmax(0, 10rem) minmax(72px, 1fr) 4.5rem;
+  align-items: center;
+  gap: 10px;
+}
+
+.chart-bar-label {
+  font-size: 0.85rem;
+  color: var(--chart-ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chart-bar-label a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.chart-bar-label a:hover {
+  text-decoration: underline;
+}
+
+.chart-bar-track {
+  min-width: 0;
+  // The hit target is taller than the 14px mark.
+  padding: 5px 0;
+}
+
+.chart-bar-fill {
+  display: flex;
+  // 2px of surface, not a stroke, separates touching segments.
+  gap: 2px;
+  height: 14px;
+  min-width: 2px;
+  cursor: default;
+}
+
+.chart-bar-fill:focus-visible {
+  outline: 2px solid var(--chart-ink);
+  outline-offset: 2px;
+}
+
+.chart-bar-segment {
+  min-width: 2px;
+  // Square at the baseline, rounded at the data end.
+  border-radius: 0;
+}
+
+.chart-bar-segment:last-child {
+  border-radius: 0 4px 4px 0;
+}
+
+.chart-bar-value {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--chart-ink);
+}
+
+// ─── Columns ─────────────────────────────────────────────────────────────────
+
+.chart-columns {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  min-height: var(--chart-plot-height, 190px);
+}
+
+.chart-column {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chart-column-stack {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  height: calc(var(--chart-plot-height, 190px) - 34px);
+}
+
+.chart-column-cap {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--chart-ink);
+  margin-bottom: 3px;
+}
+
+.chart-column-fill {
+  width: 100%;
+  max-width: 32px;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  cursor: default;
+}
+
+.chart-column-fill:focus-visible {
+  outline: 2px solid var(--chart-ink);
+  outline-offset: 2px;
+}
+
+.chart-column-label {
+  font-size: 0.72rem;
+  color: var(--chart-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+// ─── Donut ───────────────────────────────────────────────────────────────────
+
+.chart-donut {
+  display: flex;
+  justify-content: center;
+}
+
+.chart-donut-wrap {
+  position: relative;
+  width: min(220px, 100%);
+}
+
+.chart-donut-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.chart-donut-arc {
+  pointer-events: stroke;
+}
+
+.chart-donut-arc:hover {
+  opacity: 0.86;
+}
+
+.chart-donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.chart-donut-center-value {
+  font-size: 1.6rem;
+  font-weight: 650;
+  color: var(--chart-ink);
+}
+
+.chart-donut-center-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--chart-muted);
+}
+
+// ─── Heatmap ─────────────────────────────────────────────────────────────────
+
+.chart-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.chart-heatmap-grid {
+  display: grid;
+  grid-template-columns: 3.1rem repeat(
+      var(--heatmap-columns),
+      minmax(13px, 1fr)
+    );
+  // The 2px separation is the surface showing through.
+  gap: 2px;
+  min-width: 28rem;
+  align-items: center;
+}
+
+.chart-heatmap-corner {
+  min-height: 1px;
+}
+
+.chart-heatmap-column-label,
+.chart-heatmap-row-label {
+  font-size: 0.68rem;
+  color: var(--chart-muted);
+  white-space: nowrap;
+}
+
+.chart-heatmap-column-label {
+  text-align: left;
+}
+
+.chart-heatmap-cell {
+  display: block;
+  aspect-ratio: 1 / 1;
+  min-height: 13px;
+  border-radius: 2px;
+  background: var(--chart-grid);
+  cursor: default;
+}
+
+.chart-heatmap-cell.is-empty {
+  background: transparent;
+}
+
+.chart-heatmap-cell:focus-visible {
+  outline: 2px solid var(--chart-ink);
+  outline-offset: 1px;
+}
+
+.chart-heatmap-scale {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  color: var(--chart-muted);
+}
+
+.chart-heatmap-scale-step {
+  width: 22px;
+  height: 9px;
+  border-radius: 2px;
+}
+
+.chart-heatmap-scale-label {
+  font-variant-numeric: tabular-nums;
+}
+
+// ─── Dashboard index & article furniture ─────────────────────────────────────
+
+.data-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.data-note {
+  padding: 16px 18px;
+  background: var(--chart-surface);
+  border: 1px solid var(--chart-hairline);
+  border-radius: 10px;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--chart-ink-2);
+}
+
+.data-note h2,
+.data-note h3 {
+  margin: 0 0 8px;
+  font-family: Georgia, serif;
+  font-size: 1.02rem;
+  color: var(--chart-ink);
+}
+
+.data-note ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.data-note li {
+  margin: 4px 0;
+}
+
+.data-article-body {
+  // Prose keeps a readable measure even though the page around it is wide.
+  max-width: 46rem;
+  margin-inline: auto;
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+
+.data-article .data-masthead,
+.data-article > .section-rule,
+.data-article > .data-meta {
+  max-width: 46rem;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.data-article-body > p {
+  margin: 0 0 1.1em;
+}
+
+.data-article-body > h2,
+.data-article-body > h3 {
+  margin: 1.8em 0 0.5em;
+  font-family: Georgia, serif;
+  line-height: 1.25;
+}
+
+.data-article-body > h2 {
+  font-size: 1.45rem;
+}
+
+.data-article-body > ul,
+.data-article-body > ol {
+  margin: 0 0 1.1em;
+  padding-left: 1.3rem;
+}
+
+.data-article-body > ul li,
+.data-article-body > ol li {
+  display: list-item;
+  margin: 0.35em 0;
+}
+
+.data-article-body .chart-figure {
+  max-width: none;
+  margin: 26px 0;
+}
+
+// A wide chart in an article is allowed to break the measure — it needs the
+// width, and the prose around it does not.
+.data-article-body > .chart-figure--wide {
+  position: relative;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(62rem, calc(100vw - 32px));
+}
+
+@media (max-width: 900px) {
+  .data-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .chart-bar-row {
+    grid-template-columns: minmax(0, 6.5rem) minmax(56px, 1fr) 3.6rem;
+    gap: 8px;
+  }
+
+  .chart-figure {
+    padding: 16px 14px 14px;
+  }
+}
