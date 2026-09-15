@@ -38,6 +38,7 @@ function getMessagesPerRow(column: { homepageMessagesPerRow?: number }): number 
 ---
 
 
+  <div class="front-slack-columns">
   {visibleHomepageColumns.map((column) => (
   <>
     <section class="slack-column-row" style={column.accent ? `--accent: ${column.accent}` : undefined}>
@@ -92,10 +93,11 @@ function getMessagesPerRow(column: { homepageMessagesPerRow?: number }): number 
   ))}
   {protectedHomepageColumns.length > 0 && (
     <div class="slack-auth-prompt">
-      <strong class="slack-auth-prompt-label">Members-only area</strong>
+      <strong class="slack-auth-prompt-label">Members-only</strong>
       <p>
         <a href={`/auth/login?returnTo=${encodeURIComponent(returnTo)}`}>Sign in with Hack Club</a>
         {" "}to access members-only posts.
       </p>
     </div>
   )}
+  </div>

@@ -258,7 +258,7 @@ function splitSubtitle(subtitle: string): { prefix: string; channelLabel: string
         var live = document.getElementById("homepage-slack-columns-live");
         if (!(stale instanceof HTMLElement) || !(live instanceof HTMLElement)) return;
 
-        var cacheKey = "homepage-slack-columns:v2:" + (document.documentElement.dataset.authenticated || "0");
+        var cacheKey = "homepage-slack-columns:v3:" + (document.documentElement.dataset.authenticated || "0");
         var signature = function (root) {
           return Array.from(root.querySelectorAll(".slack-column-card-title-link"))
             .map(function (link) { return link.getAttribute("href") + "|" + link.textContent; })

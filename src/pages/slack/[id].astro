@@ -35,6 +35,7 @@ function messageURL(messageId: string): string {
   siteTitle={site.title}
   siteDescription={site.description}
   canonicalPath={`/slack/${encodeURIComponent(channel)}/`}
+  accentColor={column?.accent}
 >
   {column ? (
     <section class="archive-page" style={column.accent ? `--accent: ${column.accent}` : undefined}>

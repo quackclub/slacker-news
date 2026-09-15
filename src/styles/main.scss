@@ -43,14 +43,30 @@ $link-hover-color: #000000;
 $accent-ink: color-mix(in srgb, var(--accent) 72%, #101018);
 $accent-wash: color-mix(in srgb, var(--accent) 8%, #fff);
 
-.accent-red { --accent: var(--hc-red); }
-.accent-orange { --accent: var(--hc-orange); }
-.accent-yellow { --accent: var(--hc-yellow); }
-.accent-green { --accent: var(--hc-green); }
-.accent-cyan { --accent: var(--hc-cyan); }
-.accent-blue { --accent: var(--hc-blue); }
-.accent-purple { --accent: var(--hc-purple); }
-.accent-muted { --accent: var(--hc-muted); }
+.accent-red {
+  --accent: var(--hc-red);
+}
+.accent-orange {
+  --accent: var(--hc-orange);
+}
+.accent-yellow {
+  --accent: var(--hc-yellow);
+}
+.accent-green {
+  --accent: var(--hc-green);
+}
+.accent-cyan {
+  --accent: var(--hc-cyan);
+}
+.accent-blue {
+  --accent: var(--hc-blue);
+}
+.accent-purple {
+  --accent: var(--hc-purple);
+}
+.accent-muted {
+  --accent: var(--hc-muted);
+}
 
 // ─── Editorial furniture ─────────────────────────────────────────────────────
 
@@ -249,7 +265,10 @@ a {
   border: 2px solid var(--accent);
   border-radius: 999px;
   line-height: 1.5;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    color 0.3s ease;
 
   &,
   &:visited {
@@ -387,14 +406,18 @@ a {
 
 .news-ticker-skeleton-dot {
   margin: 0 1.2em;
-  color: var(--hc-red);
+  color: var(--hc-muted);
   font-size: 0.45em;
   opacity: 0.55;
 }
 
 @keyframes news-ticker-loading {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 // ─── Front page grid ─────────────────────────────────────────────────────────
@@ -448,7 +471,10 @@ a {
   padding: 24px 22px;
   display: block;
   color: #000;
-  transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+  transition:
+    background 0.15s,
+    transform 0.15s,
+    box-shadow 0.15s;
   overflow: hidden;
 
   &:hover {
@@ -487,7 +513,9 @@ article.front-block::after,
   color: var(--accent);
   opacity: 0;
   transform: translateX(-6px);
-  transition: opacity 0.15s, transform 0.15s;
+  transition:
+    opacity 0.15s,
+    transform 0.15s;
   pointer-events: none;
 }
 
@@ -604,7 +632,9 @@ article.front-block:hover::after,
   border: none;
   border-top: 1px solid #000;
   margin: 12px 0;
-  transition: border-top-color 0.15s, border-top-width 0.15s;
+  transition:
+    border-top-color 0.15s,
+    border-top-width 0.15s;
 }
 
 // Echoes the hover cue other cards use (accent lift, arrow) so this list
@@ -1266,16 +1296,6 @@ article.front-block:hover::after,
       }
     }
   }
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-
-.site-footer {
-  border-top: 3px double #000;
-  background-color: #fff;
-  color: #555;
-  font-size: 0.8rem;
-  text-align: center;
 }
 
 .theme-toggle {
